@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" >
 
-<title>Pianpian Hu</title>
+<title>Android开发工程能力 | Pianpian Hu</title>
 <meta name="description" content="温故而知新">
 
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -13,6 +13,12 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
 <link rel="stylesheet" href="https://pianpian315.github.io/styles/main.css">
 
+
+  
+    <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css" />
+  
+
+  
 
 
 <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
@@ -91,64 +97,35 @@
 
       <div class="main-container">
         <div class="content-container" data-aos="fade-up">
-          
-            <article class="post-item">
-              <div class="left">
-                <a href="https://pianpian315.github.io/post/xiang-mu-kai-fa-liu-cheng">
-                  <h2 class="post-title">项目开发流程</h2>
-                </a>
-                <div class="post-date">
-                  2019-06-16
-                </div>
-                <div class="post-abstract">
-                  
-                </div>
-              </div>
-              
-            </article>
-          
-            <article class="post-item">
-              <div class="left">
-                <a href="https://pianpian315.github.io/post/android-kai-fa-gong-cheng-neng-li">
-                  <h2 class="post-title">Android开发工程能力</h2>
-                </a>
-                <div class="post-date">
-                  2019-06-16
-                </div>
-                <div class="post-abstract">
-                  
-                </div>
-              </div>
-              
-            </article>
-          
-            <article class="post-item">
-              <div class="left">
+          <div class="post-detail">
+            <h2 class="post-title">Android开发工程能力</h2>
+            <div class="post-date">2019-06-16</div>
+            
+            <div class="post-content">
+              <p>Java的编码规范可以参考<a href="https://github.com/google/styleguide">Google编码规范</a>中的<a href="https://google.github.io/styleguide/javaguide.html">Java编码规范</a>和<a href="https://github.com/alibaba/p3c/blob/master/%E9%98%BF%E9%87%8C%E5%B7%B4%E5%B7%B4Java%E5%BC%80%E5%8F%91%E6%89%8B%E5%86%8C%EF%BC%88%E8%AF%A6%E5%B0%BD%E7%89%88%EF%BC%89.pdf">阿里巴巴Java开发手册</a>中的Java开发规范。</p>
+
+            </div>
+            
+            
+              <div class="next-post">
+                <div class="next">下一篇</div>
                 <a href="https://pianpian315.github.io/post/hello-gridea">
-                  <h2 class="post-title">Hello Gridea</h2>
+                  <h3 class="post-title">
+                    Hello Gridea
+                  </h3>
                 </a>
-                <div class="post-date">
-                  2018-12-12
-                </div>
-                <div class="post-abstract">
-                  <p>👏  欢迎使用 <strong>Gridea</strong> ！<br>
-✍️  <strong>Gridea</strong> 一个静态博客写作客户端。你可以用它来记录你的生活、心情、知识、笔记、创意... ...</p>
-
-                </div>
               </div>
-              
-                <a class="right" href="https://pianpian315.github.io/post/hello-gridea">
-                  <div class="feature-container" style="background-image: url('https://pianpian315.github.io/post-images/hello-gridea.png')">
-                  </div>
-                </a>
-              
-            </article>
-          
+            
 
-          <div class="pagination-container">
-  
-  
-</div>
+            
+              
+                <div id="gitalk-container" data-aos="fade-in"></div>
+              
+
+              
+            
+
+          </div>
 
         </div>
       </div>
@@ -170,6 +147,29 @@ var app = new Vue({
 })
 
 </script>
+
+
+
+  
+    <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+    <script>
+
+      var gitalk = new Gitalk({
+        clientID: 'ed0dae503609708746e1',
+        clientSecret: '6cdb175621c72f6643378a51bfc1185026724be2',
+        repo: 'pianpian315.github.io',
+        owner: 'pianpian315',
+        admin: ['pianpian315'],
+        id: (location.pathname).substring(0, 49),      // Ensure uniqueness and length less than 50
+        distractionFreeMode: false  // Facebook-like distraction free mode
+      })
+
+      gitalk.render('gitalk-container')
+
+    </script>
+  
+
+  
 
 
 

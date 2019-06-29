@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://pianpian315.github.io</id>
     <title>Pianpian Hu</title>
-    <updated>2019-06-15T14:49:59.920Z</updated>
+    <updated>2019-06-29T02:12:32.004Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://pianpian315.github.io"/>
     <link rel="self" href="https://pianpian315.github.io/atom.xml"/>
@@ -10,6 +10,24 @@
     <logo>https://pianpian315.github.io/images/avatar.png</logo>
     <icon>https://pianpian315.github.io/favicon.ico</icon>
     <rights>All rights reserved 2019, Pianpian Hu</rights>
+    <entry>
+        <title type="html"><![CDATA[项目开发流程]]></title>
+        <id>https://pianpian315.github.io/post/xiang-mu-kai-fa-liu-cheng</id>
+        <link href="https://pianpian315.github.io/post/xiang-mu-kai-fa-liu-cheng">
+        </link>
+        <updated>2019-06-15T18:35:16.000Z</updated>
+        <content type="html"><![CDATA[<div align="center"><img src="file:///Users/zhangli/Documents/Gridea/post-images/1560623754948.png" width = "120px" height = "450px"  /> </div>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Android开发工程能力]]></title>
+        <id>https://pianpian315.github.io/post/android-kai-fa-gong-cheng-neng-li</id>
+        <link href="https://pianpian315.github.io/post/android-kai-fa-gong-cheng-neng-li">
+        </link>
+        <updated>2019-06-15T17:47:36.000Z</updated>
+        <content type="html"><![CDATA[<p>Java的编码规范可以参考<a href="https://github.com/google/styleguide">Google编码规范</a>中的<a href="https://google.github.io/styleguide/javaguide.html">Java编码规范</a>和<a href="https://github.com/alibaba/p3c/blob/master/%E9%98%BF%E9%87%8C%E5%B7%B4%E5%B7%B4Java%E5%BC%80%E5%8F%91%E6%89%8B%E5%86%8C%EF%BC%88%E8%AF%A6%E5%B0%BD%E7%89%88%EF%BC%89.pdf">阿里巴巴Java开发手册</a>中的Java开发规范。</p>
+]]></content>
+    </entry>
     <entry>
         <title type="html"><![CDATA[Hello Gridea]]></title>
         <id>https://pianpian315.github.io/post/hello-gridea</id>
