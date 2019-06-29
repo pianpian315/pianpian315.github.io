@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://pianpian315.github.io</id>
     <title>Pianpian Hu</title>
-    <updated>2019-06-29T02:12:32.004Z</updated>
+    <updated>2019-06-29T02:36:55.387Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://pianpian315.github.io"/>
     <link rel="self" href="https://pianpian315.github.io/atom.xml"/>
@@ -11,16 +11,40 @@
     <icon>https://pianpian315.github.io/favicon.ico</icon>
     <rights>All rights reserved 2019, Pianpian Hu</rights>
     <entry>
-        <title type="html"><![CDATA[项目开发流程]]></title>
-        <id>https://pianpian315.github.io/post/xiang-mu-kai-fa-liu-cheng</id>
-        <link href="https://pianpian315.github.io/post/xiang-mu-kai-fa-liu-cheng">
+        <title type="html"><![CDATA[几个可用的谷歌镜像站]]></title>
+        <id>https://pianpian315.github.io/post/ji-ge-ke-yong-de-gu-ge-jing-xiang-zhan</id>
+        <link href="https://pianpian315.github.io/post/ji-ge-ke-yong-de-gu-ge-jing-xiang-zhan">
         </link>
-        <updated>2019-06-15T18:35:16.000Z</updated>
-        <content type="html"><![CDATA[<div align="center"><img src="file:///Users/zhangli/Documents/Gridea/post-images/1560623754948.png" width = "120px" height = "450px"  /> </div>
+        <updated>2019-06-29T02:28:10.000Z</updated>
+        <content type="html"><![CDATA[<p>谷歌镜像网站，搜集自网络，适合科研学习使用。</p>
+<h3 id="gugeji">gugeji</h3>
+<p>搜索数据源自谷歌，可用于科研学习等信息搜索使用。</p>
+<p>地址：https://gugeji.com/</p>
+<h3 id="birds">BIRD.S</h3>
+<p>阉割版谷歌，适合科研学习使用。优点：备案域名长期稳定</p>
+<p>地址：http://caup.cn/</p>
+<h3 id="别忘搜索">别忘搜索</h3>
+<p>百度谷歌一起搜，新一代双搜聚合搜索，多重对比聚合联合搜索引擎。</p>
+<p>地址：http://www.biewang.com/</p>
+<h3 id="大木虫学术导航">大木虫学术导航</h3>
+<p>科研人员学术研究第一站。涵盖Google学术镜像入口，国内外免费文献下载入口，科研工具、专利标准、基金申请、期刊信息，科研成果等科研人员必备良站，为广大科研人员提供最简单便捷的科研学术上网导航服务。</p>
+<p>地址：http://www.4243.net/</p>
+<h3 id="80学术">80学术</h3>
+<p>80图书馆，超高文献下载权限，输入关键词、标题进行谷歌学术检索，输入doi可直接下载。</p>
+<p>地址：https://www.80xueshu.com/</p>
+<h3 id="google镜像导航">Google镜像导航</h3>
+<p>多个谷歌镜像站,自动检查、轻松切换、高速稳定。Google上不去,就上谷歌镜像站吧，长期可用。</p>
+<p>地址：https://scholar.fdwwr.cn/</p>
+<h3 id="google镜像导航-2">Google镜像导航</h3>
+<p>包含有谷歌学术和网页搜索</p>
+<p>地址：http://ac.scmor.com</p>
+<h4 id="参考文章">参考文章：</h4>
+<p>https://www.sbkko.com/gj-116.html<br>
+https://www.sbkko.com/gi.html</p>
 ]]></content>
     </entry>
     <entry>
-        <title type="html"><![CDATA[Android开发工程能力]]></title>
+        <title type="html"><![CDATA[Java编码规范]]></title>
         <id>https://pianpian315.github.io/post/android-kai-fa-gong-cheng-neng-li</id>
         <link href="https://pianpian315.github.io/post/android-kai-fa-gong-cheng-neng-li">
         </link>
