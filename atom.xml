@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://pianpian315.github.io</id>
     <title>Pianpian Hu</title>
-    <updated>2019-06-29T02:44:39.303Z</updated>
+    <updated>2019-07-20T16:32:42.937Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://pianpian315.github.io"/>
     <link rel="self" href="https://pianpian315.github.io/atom.xml"/>
@@ -10,6 +10,22 @@
     <logo>https://pianpian315.github.io/images/avatar.png</logo>
     <icon>https://pianpian315.github.io/favicon.ico</icon>
     <rights>All rights reserved 2019, Pianpian Hu</rights>
+    <entry>
+        <title type="html"><![CDATA[吴军-书单]]></title>
+        <id>https://pianpian315.github.io/post/wu-jun-shu-dan</id>
+        <link href="https://pianpian315.github.io/post/wu-jun-shu-dan">
+        </link>
+        <updated>2019-07-20T16:26:34.000Z</updated>
+        <content type="html"><![CDATA[<p>大学之路</p>
+<p>智能时代</p>
+<p>浪潮之巅</p>
+<p>文明之光</p>
+<p>见识</p>
+<p>态度</p>
+<p>硅谷来信</p>
+<p>全球科技通史</p>
+]]></content>
+    </entry>
     <entry>
         <title type="html"><![CDATA[几个可用的谷歌镜像站]]></title>
         <id>https://pianpian315.github.io/post/ji-ge-ke-yong-de-gu-ge-jing-xiang-zhan</id>
