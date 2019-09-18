@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://pianpian315.github.io</id>
     <title>Pianpian Hu</title>
-    <updated>2019-09-18T13:47:36.323Z</updated>
+    <updated>2019-09-18T13:52:10.620Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://pianpian315.github.io"/>
     <link rel="self" href="https://pianpian315.github.io/atom.xml"/>
@@ -11,6 +11,38 @@
     <icon>https://pianpian315.github.io/favicon.ico</icon>
     <rights>All rights reserved 2019, Pianpian Hu</rights>
     <entry>
+        <title type="html"><![CDATA[浅谈项目流程规范]]></title>
+        <id>https://pianpian315.github.io/post/qian-tan-xiang-mu-liu-cheng-gui-fan</id>
+        <link href="https://pianpian315.github.io/post/qian-tan-xiang-mu-liu-cheng-gui-fan">
+        </link>
+        <updated>2019-09-18T13:50:41.000Z</updated>
+        <content type="html"><![CDATA[<p>一个需求从立项到上线，会有一个漫长的协作过程，下面结合自身项目经验对整个过程进行总结。</p>
+<h4 id="1-需求评审">1、需求评审</h4>
+<p>参与角色：PM, RD, QA, UE</p>
+<p>由PM主持，主要是对具体需求展开说明。</p>
+<h4 id="2-交互评审">2、交互评审</h4>
+<p>参与角色：UE, PM, RD, QA</p>
+<p>由UE主持，主要是根据需求演示交互设计方案。</p>
+<h4 id="3-case评审">3、case评审</h4>
+<p>参与角色：QA, PM, RD, UE</p>
+<p>由QA主持，主要是根据需求对具体case进行说明。</p>
+<h4 id="4-开发">4、开发</h4>
+<p>参与角色：RD</p>
+<p>RD根据需求和设计进行需求开发</p>
+<h4 id="5-测试">5、测试</h4>
+<p>参与角色：QA</p>
+<p>待RD需求提测之后，QA根据case进行测试，包括FC测试和RC测试。</p>
+<h4 id="6-show-case">6、show case</h4>
+<p>参与角色：QA, PM, RD, UE</p>
+<p>待测试完成之后，PM组织所有人进行最终产品演示。</p>
+<h4 id="7-灰度">7、灰度</h4>
+<p>小范围发布上线，观察数据。</p>
+<h4 id="9-发布">9、发布</h4>
+<p>灰度稳定之后，全量发布。</p>
+<p><img src="https://pianpian315.github.io/post-images/1568814716451.png" alt=""></p>
+]]></content>
+    </entry>
+    <entry>
         <title type="html"><![CDATA[浅谈项目开发流程]]></title>
         <id>https://pianpian315.github.io/post/qian-tan-xiang-mu-kai-fa-liu-cheng</id>
         <link href="https://pianpian315.github.io/post/qian-tan-xiang-mu-kai-fa-liu-cheng">
@@ -18,13 +50,13 @@
         <updated>2019-09-18T13:39:07.000Z</updated>
         <content type="html"><![CDATA[<p>为了保证项目保质保量的推进，每一个项目需要有一个规范的开发流程，下面结合自身项目经验，对项目开发流程进行说明。</p>
 <p>项目基本可以分为项目管理（需求）、文档管理（设计）、代码管理（开发）、持续交付（发布）四个过程。</p>
-<h5 id="项目管理">项目管理</h5>
+<h4 id="项目管理">项目管理</h4>
 <p>主要是对需求、bug进行跟踪和管理。</p>
-<h5 id="文档管理">文档管理</h5>
+<h4 id="文档管理">文档管理</h4>
 <p>主要是由RD对需求的开发说明文档进行输出。</p>
-<h5 id="代码管理">代码管理</h5>
+<h4 id="代码管理">代码管理</h4>
 <p>主要是使用代码管理工具对代码进行管理，另外包括代码规范、代码质量检测。</p>
-<h5 id="持续集成">持续集成</h5>
+<h4 id="持续集成">持续集成</h4>
 <p>流水线式的一站式编译发布和上线。主要包含自动化打包、测试（安全检测、性能检测、稳定性检测），发布。</p>
 <p><img src="https://pianpian315.github.io/post-images/1568814432609.png" alt=""></p>
 ]]></content>
