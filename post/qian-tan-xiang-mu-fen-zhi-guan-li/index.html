@@ -5,7 +5,7 @@
     
 <meta charset="utf-8" >
 
-<title>Java编码规范 | Pianpian Hu</title>
+<title>浅谈项目分支管理 | Pianpian Hu</title>
 <meta name="description" content="温故而知新">
 
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -86,18 +86,44 @@
       <div class="content-container">
         <div class="post-detail">
           
-          <h2 class="post-title">Java编码规范</h2>
+          <h2 class="post-title">浅谈项目分支管理</h2>
           <div class="post-info post-detail-info">
-            <span><i class="icon-calendar-outline"></i> 2019-06-16</span>
+            <span><i class="icon-calendar-outline"></i> 2019-09-18</span>
+            
+              <span>
+                <i class="icon-pricetags-outline"></i>
+                
+                  <a href="https://pianpian315.github.io/tag/90SCZzI2p">
+                    实战经验
+                    
+                  </a>
+                
+              </span>
             
           </div>
           <div class="post-content">
-            <p>Java的编码规范可以参考<a href="https://github.com/google/styleguide">Google编码规范</a>中的<a href="https://google.github.io/styleguide/javaguide.html">Java编码规范</a>和<a href="https://github.com/alibaba/p3c/blob/master/%E9%98%BF%E9%87%8C%E5%B7%B4%E5%B7%B4Java%E5%BC%80%E5%8F%91%E6%89%8B%E5%86%8C%EF%BC%88%E8%AF%A6%E5%B0%BD%E7%89%88%EF%BC%89.pdf">阿里巴巴Java开发手册</a>中的Java开发规范。</p>
+            <p>分支的管理对于项目的开发非常重要，下面结合自身项目经验说说分支的管理。</p>
+<p>项目的代码分支主要有以下几条线：</p>
+<p>(1) feature-v*：feature分支，用于各版本的feature迭代开发</p>
+<p>(2) apk-dev：开发分支，用于编译线下测试版本（debug版本）</p>
+<p>(3) apk-rel：发布分支，用于编译线上发布版本（release版本）</p>
+<p>每一个版本建立一个专门的feature分支（比如，feature-v1, feature-v2, feature-v3......）。在一个版本开发完毕后，把feature分支merge到apk-dev分支；下一个版本以最新的apk-dev为base建立新的feature分支；apk-dev分支FC测试通过后将apk-dev分支merge到apk-rel分支上，然后apk-rel分支RC测试通过后即可进行上线发布。</p>
+<p>feature-v* --&gt; apk-dev --&gt; apk-rel</p>
+<p>另外附上一个参考链接：
+http://www.ruanyifeng.com/blog/2012/07/git.html</p>
 
           </div>
         </div>
 
         
+          <div class="next-post">
+            <a class="purple-link" href="https://pianpian315.github.io/post/qian-tan-xiang-mu-liu-cheng-gui-fan">
+              <h3 class="post-title">
+                下一篇：浅谈项目流程规范
+              </h3>
+            </a>
+          </div>
+          
       </div>
 
       
