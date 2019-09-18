@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://pianpian315.github.io</id>
     <title>Pianpian Hu</title>
-    <updated>2019-09-18T13:33:41.546Z</updated>
+    <updated>2019-09-18T13:47:36.323Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://pianpian315.github.io"/>
     <link rel="self" href="https://pianpian315.github.io/atom.xml"/>
@@ -10,6 +10,25 @@
     <logo>https://pianpian315.github.io/images/avatar.png</logo>
     <icon>https://pianpian315.github.io/favicon.ico</icon>
     <rights>All rights reserved 2019, Pianpian Hu</rights>
+    <entry>
+        <title type="html"><![CDATA[浅谈项目开发流程]]></title>
+        <id>https://pianpian315.github.io/post/qian-tan-xiang-mu-kai-fa-liu-cheng</id>
+        <link href="https://pianpian315.github.io/post/qian-tan-xiang-mu-kai-fa-liu-cheng">
+        </link>
+        <updated>2019-09-18T13:39:07.000Z</updated>
+        <content type="html"><![CDATA[<p>为了保证项目保质保量的推进，每一个项目需要有一个规范的开发流程，下面结合自身项目经验，对项目开发流程进行说明。</p>
+<p>项目基本可以分为项目管理（需求）、文档管理（设计）、代码管理（开发）、持续交付（发布）四个过程。</p>
+<h5 id="项目管理">项目管理</h5>
+<p>主要是对需求、bug进行跟踪和管理。</p>
+<h5 id="文档管理">文档管理</h5>
+<p>主要是由RD对需求的开发说明文档进行输出。</p>
+<h5 id="代码管理">代码管理</h5>
+<p>主要是使用代码管理工具对代码进行管理，另外包括代码规范、代码质量检测。</p>
+<h5 id="持续集成">持续集成</h5>
+<p>流水线式的一站式编译发布和上线。主要包含自动化打包、测试（安全检测、性能检测、稳定性检测），发布。</p>
+<p><img src="https://pianpian315.github.io/post-images/1568814432609.png" alt=""></p>
+]]></content>
+    </entry>
     <entry>
         <title type="html"><![CDATA[几个可用的谷歌镜像站]]></title>
         <id>https://pianpian315.github.io/post/ji-ge-ke-yong-de-gu-ge-jing-xiang-zhan</id>
