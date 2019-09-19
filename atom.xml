@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://pianpian315.github.io</id>
     <title>Pianpian Hu</title>
-    <updated>2019-09-19T15:55:50.787Z</updated>
+    <updated>2019-09-19T15:56:34.767Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://pianpian315.github.io"/>
     <link rel="self" href="https://pianpian315.github.io/atom.xml"/>
@@ -54,7 +54,7 @@ http://www.ruanyifeng.com/blog/2012/07/git.html</p>
 <p>待测试完成之后，PM组织所有人进行最终产品演示。</p>
 <h4 id="7-灰度">7、灰度</h4>
 <p>小范围发布上线，观察数据。</p>
-<h4 id="9-发布">9、发布</h4>
+<h4 id="8-发布">8、发布</h4>
 <p>灰度稳定之后，全量发布。</p>
 <p><img src="https://pianpian315.github.io/post-images/1568814716451.png" alt=""></p>
 ]]></content>
