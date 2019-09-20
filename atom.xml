@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://pianpian315.github.io</id>
     <title>Pianpian Hu</title>
-    <updated>2019-09-19T16:45:57.283Z</updated>
+    <updated>2019-09-20T17:06:51.584Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://pianpian315.github.io"/>
     <link rel="self" href="https://pianpian315.github.io/atom.xml"/>
@@ -11,7 +11,7 @@
     <icon>https://pianpian315.github.io/favicon.ico</icon>
     <rights>All rights reserved 2019, Pianpian Hu</rights>
     <entry>
-        <title type="html"><![CDATA[浅析项目团队管理]]></title>
+        <title type="html"><![CDATA[浅谈项目团队管理]]></title>
         <id>https://pianpian315.github.io/post/qian-xi-xiang-mu-tuan-dui-guan-li</id>
         <link href="https://pianpian315.github.io/post/qian-xi-xiang-mu-tuan-dui-guan-li">
         </link>
