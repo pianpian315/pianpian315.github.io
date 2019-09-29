@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://pianpian315.github.io</id>
     <title>Pianpian Hu</title>
-    <updated>2019-09-20T17:06:51.584Z</updated>
+    <updated>2019-09-29T01:30:31.265Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://pianpian315.github.io"/>
     <link rel="self" href="https://pianpian315.github.io/atom.xml"/>
@@ -10,6 +10,59 @@
     <logo>https://pianpian315.github.io/images/avatar.png</logo>
     <icon>https://pianpian315.github.io/favicon.ico</icon>
     <rights>All rights reserved 2019, Pianpian Hu</rights>
+    <entry>
+        <title type="html"><![CDATA[OpenJDK源码下载]]></title>
+        <id>https://pianpian315.github.io/post/_vcpehXOV</id>
+        <link href="https://pianpian315.github.io/post/_vcpehXOV">
+        </link>
+        <updated>2019-09-29T01:25:58.000Z</updated>
+        <content type="html"><![CDATA[<h2 id="一-源码下载">一、源码下载</h2>
+<h3 id="1-安装mercurial版本控制">1、安装mercurial版本控制</h3>
+<pre><code>$ brew install mercurial
+</code></pre>
+<p>mercurial安装完毕后，可以通过hg命令来下载源码，使用方式和git、svn类似。</p>
+<h3 id="2-下载openjdk源码">2、下载OpenJDK源码</h3>
+<pre><code>$ hg clone http://hg.openjdk.java.net/jdk8/jdk8 jdk8
+</code></pre>
+<p>你可以看到clone下来的代码很少，那是因为OpenJDK将不同类型的source文件放在了不同的子仓库，你可以进入OpenJDK的目录，执行get_source.sh文件即可。</p>
+<pre><code>$ cd jdk8
+$ chmod +x get_source.sh
+$ ./get_source.sh
+</code></pre>
+<h3 id="3-配置jdk可选">3、配置JDK（可选）</h3>
+<pre><code>$ bash configure
+</code></pre>
+<h3 id="4-构建编译">4、构建编译</h3>
+<pre><code>$ make clean images
+</code></pre>
+<p>或者</p>
+<pre><code>make clean images LOG=debug // to display DEBUG information
+</code></pre>
+<p>你也可以单独对某个模块进行编译构建</p>
+<pre><code>$ make jdk
+$ make hotspot
+$ make test
+</code></pre>
+<h2 id="二-源码基本说明">二、源码基本说明</h2>
+<p>— corba：不流行的多语言、分布式通讯接口<br>
+— hotspot：Java 虚拟机<br>
+— jaxp：XML 处理<br>
+— jaxws：一组 XML web services 的 Java API<br>
+— langtools：Java 语言工具<br>
+— nashorn：JVM 上的 JavaScript 运行时<br>
+— jdk：java 开发工具包<br>
+jdk是我们研究源码经常会用到的，里面包含：<br>
+— 针对操作系统的部分<br>
+— share：与平台无关的实现</p>
+<blockquote>
+<p>参考文章：<br>
+https://download.java.net/openjdk/jdk8<br>
+https://www.jianshu.com/p/fd26b158dede<br>
+https://adoptopenjdk.gitbooks.io/adoptopenjdk-getting-started-kit/en/binaries/build_openjdk_8.html<br>
+https://hunterzhao.io/post/2018/01/29/compile-openjdk10-source-code-on-mac/</p>
+</blockquote>
+]]></content>
+    </entry>
     <entry>
         <title type="html"><![CDATA[浅谈项目团队管理]]></title>
         <id>https://pianpian315.github.io/post/qian-xi-xiang-mu-tuan-dui-guan-li</id>
@@ -73,7 +126,7 @@ http://www.ruanyifeng.com/blog/2012/07/git.html</p>
 <p>小范围发布上线，观察数据。</p>
 <h4 id="8-发布">8、发布</h4>
 <p>灰度稳定之后，全量发布。</p>
-<p><img src="https://pianpian315.github.io/post-images/1568814716451.png" alt=""></p>
+<figure data-type="image" tabindex="1"><img src="https://pianpian315.github.io/post-images/1568814716451.png" alt=""></figure>
 ]]></content>
     </entry>
     <entry>
@@ -92,7 +145,7 @@ http://www.ruanyifeng.com/blog/2012/07/git.html</p>
 <p>主要是使用代码管理工具对代码进行管理，另外包括代码规范、代码质量检测。</p>
 <h4 id="持续集成">持续集成</h4>
 <p>流水线式的一站式编译发布和上线。主要包含自动化打包、测试（安全检测、性能检测、稳定性检测），发布。</p>
-<p><img src="https://pianpian315.github.io/post-images/1568814432609.png" alt=""></p>
+<figure data-type="image" tabindex="1"><img src="https://pianpian315.github.io/post-images/1568814432609.png" alt=""></figure>
 ]]></content>
     </entry>
     <entry>

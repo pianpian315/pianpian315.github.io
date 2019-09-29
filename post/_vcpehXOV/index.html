@@ -5,7 +5,7 @@
     
 <meta charset="utf-8" >
 
-<title>书单 | Pianpian Hu</title>
+<title>OpenJDK源码下载 | Pianpian Hu</title>
 <meta name="description" content="贵在坚持，欢迎监督">
 
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -86,31 +86,70 @@
       <div class="content-container">
         <div class="post-detail">
           
-          <h2 class="post-title">书单</h2>
+          <h2 class="post-title">OpenJDK源码下载</h2>
           <div class="post-info post-detail-info">
-            <span><i class="icon-calendar-outline"></i> 2019-09-20</span>
+            <span><i class="icon-calendar-outline"></i> 2019-09-29</span>
             
           </div>
           <div class="post-content">
-            <h3 id="java相关">Java相关</h3>
-<ul>
-<li>周志明：深入理解Java虚拟机</li>
-<li>方腾飞：Java并发编程的艺术</li>
-</ul>
-<h3 id="android相关">Android相关</h3>
-<ul>
-<li>柯元旦：Android内核剖析</li>
-<li>邓凡平：深入理解Android-卷1</li>
-<li>邓凡平：深入理解Android-卷2</li>
-<li>张大伟：深入理解Android-卷3</li>
-<li>林学森：深入理解Android内核设计思想</li>
-<li>李宁：Android深度探索(卷2)</li>
-</ul>
+            <h2 id="一-源码下载">一、源码下载</h2>
+<h3 id="1-安装mercurial版本控制">1、安装mercurial版本控制</h3>
+<pre><code>$ brew install mercurial
+</code></pre>
+<p>mercurial安装完毕后，可以通过hg命令来下载源码，使用方式和git、svn类似。</p>
+<h3 id="2-下载openjdk源码">2、下载OpenJDK源码</h3>
+<pre><code>$ hg clone http://hg.openjdk.java.net/jdk8/jdk8 jdk8
+</code></pre>
+<p>你可以看到clone下来的代码很少，那是因为OpenJDK将不同类型的source文件放在了不同的子仓库，你可以进入OpenJDK的目录，执行get_source.sh文件即可。</p>
+<pre><code>$ cd jdk8
+$ chmod +x get_source.sh
+$ ./get_source.sh
+</code></pre>
+<h3 id="3-配置jdk可选">3、配置JDK（可选）</h3>
+<pre><code>$ bash configure
+</code></pre>
+<h3 id="4-构建编译">4、构建编译</h3>
+<pre><code>$ make clean images
+</code></pre>
+<p>或者</p>
+<pre><code>make clean images LOG=debug // to display DEBUG information
+</code></pre>
+<p>你也可以单独对某个模块进行编译构建</p>
+<pre><code>$ make jdk
+$ make hotspot
+$ make test
+</code></pre>
+<h2 id="二-源码基本说明">二、源码基本说明</h2>
+<p>— corba：不流行的多语言、分布式通讯接口<br>
+— hotspot：Java 虚拟机<br>
+— jaxp：XML 处理<br>
+— jaxws：一组 XML web services 的 Java API<br>
+— langtools：Java 语言工具<br>
+— nashorn：JVM 上的 JavaScript 运行时<br>
+— jdk：java 开发工具包<br>
+jdk是我们研究源码经常会用到的，里面包含：<br>
+— 针对操作系统的部分<br>
+— share：与平台无关的实现</p>
+<blockquote>
+<p>参考文章：<br>
+https://download.java.net/openjdk/jdk8<br>
+https://www.jianshu.com/p/fd26b158dede<br>
+https://adoptopenjdk.gitbooks.io/adoptopenjdk-getting-started-kit/en/binaries/build_openjdk_8.html<br>
+https://hunterzhao.io/post/2018/01/29/compile-openjdk10-source-code-on-mac/</p>
+</blockquote>
 
           </div>
         </div>
 
         
+          <div class="next-post">
+            <a class="purple-link" href="https://pianpian315.github.io/post/qian-xi-xiang-mu-tuan-dui-guan-li">
+              <h3 class="post-title">
+                下一篇：浅谈项目团队管理
+              </h3>
+            </a>
+          </div>
+          
       </div>
 
       
