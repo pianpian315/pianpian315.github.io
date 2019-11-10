@@ -3,7 +3,7 @@
         <head>
         <meta name="viewport" content="width=device-width,minimum-scale=1,maximum-scale=1,initial-scale=1,user-scalable=no" />
         <meta charset="utf-8">
-        <title>Flutter中的Window | Pianpian&#39;s Blog</title>
+        <title>Flutter中的VSync机制 | Pianpian&#39;s Blog</title>
         <link rel="stylesheet" href="https://pianpian315.github.io/styles/main.css">
         <link rel="stylesheet" href="https://at.alicdn.com/t/font_1423691_1fcfxbwa79n.css">
         <link href="https://cdn.bootcss.com/animate.css/3.7.2/animate.min.css" rel="stylesheet">
@@ -63,119 +63,86 @@
                 <div class="mdui-row">
                         <div class="mdui-col-md-8 mdui-col-offset-md-2 ">
                                 <article class="mdui-p-a-2 post animated fadeIn" style="animation-delay: 0.8s;animation-duration: 2s">
-                                    <div class="post-title  mdui-m-b-1">Flutter中的Window</div>
-                                    <div class="mdui-typo-body-2 mdui-m-b-2" datetime="2019-11-10 14:18:07">2019-11-10 / 5 min read</div>
-                                    <div class="mdui-m-b-2 mdui-typo post-neirong"><p>在Flutter中，Window类是Flutter Framework跟宿主系统相连接的接口，宿主系统通过Window类开放了各种各样的回调方法以及native调用接口供Flutter Framework使用。Window类来自库dart:ui，相关源代码在window.dart中，我们来具体看看其代码。</p>
-<pre><code class="language-dart">/// The [Window] singleton. This object exposes the size of the display, the
-/// core scheduler API, the input event callback, the graphics drawing API, and
-/// other such core services.
-final Window window = new Window._();
-</code></pre>
-<p>上面代码是Window实例化的过程，从注释我们可以知道，Window是一个单例对象，它对上层提供屏幕尺寸，调度接口，输入事件回调，图形绘制接口以及其他一些核心服务。正是因为如此，我们才可以通过window来获取底层系统传递过来的各种各样的信息，另外，window也提供了一些native调用，方便上层进行一些系统调用。</p>
-<p>下面来具体看看核心代码：</p>
-<pre><code class="language-dart">class Window {
-
-  // 当前设备的DPI，即一个逻辑像素显示多少物理像素，数字越大，显示效果就越精细保真。
-  // DPI是设备屏幕的固件属性，如Nexus 6的屏幕DPI为3.5 
-  double get devicePixelRatio =&gt; _devicePixelRatio;
-
-  // Flutter UI绘制区域的大小
-  Size get physicalSize =&gt; _physicalSize;
-
-  // 当前系统默认的语言Locale
-  Locale get locale;
-
-  // 当前系统字体缩放比例。  
-  double get textScaleFactor =&gt; _textScaleFactor;  
-
-  // 当绘制区域大小改变回调
-  VoidCallback get onMetricsChanged =&gt; _onMetricsChanged;  
-  // Locale发生变化回调
-  VoidCallback get onLocaleChanged =&gt; _onLocaleChanged;
-  // 系统字体缩放变化回调
-  VoidCallback get onTextScaleFactorChanged =&gt; _onTextScaleFactorChanged;
-  // 绘制前回调，一般会受显示器的垂直同步信号VSync驱动，当屏幕刷新时就会被调用
-  FrameCallback get onBeginFrame =&gt; _onBeginFrame;
-  // 绘制回调  
-  VoidCallback get onDrawFrame =&gt; _onDrawFrame;
-  // 点击或指针事件回调
-  PointerDataPacketCallback get onPointerDataPacket =&gt; _onPointerDataPacket;
-  // 调度Frame，该方法执行后，onBeginFrame和onDrawFrame将紧接着会在合适时机被调用，
-  // 此方法会直接调用Flutter engine的Window_scheduleFrame方法
-  void scheduleFrame() native 'Window_scheduleFrame';
-  // 更新应用在GPU上的渲染,此方法会直接调用Flutter engine的Window_render方法
-  void render(Scene scene) native 'Window_render';
-
-  // 发送平台消息
-  void sendPlatformMessage(String name,
-                           ByteData data,
-                           PlatformMessageResponseCallback callback) ;
-  // 平台通道消息处理回调  
-  PlatformMessageCallback get onPlatformMessage =&gt; _onPlatformMessage;
-
-  ... //其它属性及回调
-
-}
-</code></pre>
-<p>下面我们具体以一个例子来说明上面信息是如何使用的，在我们的应用开发过程中，我们需要响应各种手势事件来实现不同的功能，那么在Flutter中，手势事件是如何产生的呢？从Window中我们可以找到答案，我们看到有一个onPointerDataPacket函数回调，flutter就是通过该方法来接收系统底层传递过来的事件。</p>
+                                    <div class="post-title  mdui-m-b-1">Flutter中的VSync机制</div>
+                                    <div class="mdui-typo-body-2 mdui-m-b-2" datetime="2019-11-10 14:42:05">2019-11-10 / 4 min read</div>
+                                    <div class="mdui-m-b-2 mdui-typo post-neirong"><p>我们知道，UI的显示是一帧一帧的，一次绘制过程，我们称其为一帧，在Flutter中，engine是通过VSync信号不断地触发每一帧的绘制，我们之所以说Flutter可以实现60fps，就是因为一秒钟可以触发60次重绘，那绘制是如何通过VSync信号进行驱动的呢？<br>
+<img src="https://pianpian315.github.io/post-images/1573368494773.png" alt=""></p>
+<p>VSync可以理解为一种定时中断，系统在每次可以进行绘制的时候都会发送VSync信号，CPU/GPU收到信号后马上处理绘制。所以，在Flutter中，当需要进行渲染绘制的时候，我们就需要监听VSync信号，当有VSync信号产生的时候，就可以绘制操作。<br>
+<img src="https://pianpian315.github.io/post-images/1573368549589.png" alt=""></p>
+<p>那现在的问题就是如果需要进行绘制操作，如何来监听这个VSync信号呢？我们首先需要通过引擎Engine的ScheduleFrame()方法来注册VSYNC信号回调，这个时候当Vsync信号到来的时候就会收到通知，然后就可以进行渲染绘制操作了。</p>
+<p>ScheduleFrame()是Flutter Engine里面的方法，我们在Flutter Framework中如何调用到这个方法了，这个时候上一篇文章讲解的Window就发挥出作用了，在Window中有一个native的scheduleFrame方法，它调用的就是引擎Engine的ScheduleFrame()方法，跟Java中的JNI机制差不多，注册完成之后，当下一个VSync信息到来的时候，Window类中的_handleBeginFrame()和_handleDrawFrame()就会被回调，这样我们就可以收到绘制通知，具体的源码调用过程这里就不展开了，感兴趣的可以参考文章：http://gityuan.com/2019/06/15/flutter_ui_draw/。</p>
+<p>下面我们同样举个例子来验证一下这个监听和回调过程：</p>
 <pre><code class="language-dart">import 'dart:ui';
 
 void main() {
 
-  window.onPointerDataPacket = (PointerDataPacket packet) {
-    print(packet.data);
+  window.onBeginFrame = (Duration rawTimeStamp) {
+    print(&quot;onBeginFrame: &quot; + rawTimeStamp.toString());
   };
+
+  window.onDrawFrame = () {
+    print(&quot;onDrawFrame&quot;);
+  };
+
+  print(&quot;scheduleFrame&quot;);
+  window.scheduleFrame();
 }
 </code></pre>
-<p>上面是一个很简单的程序，就是当有手势事件产生的时候，直接打印事件数组。</p>
-<p>运行该程序，当我们点击屏幕的时候，打印结果如下：</p>
-<pre><code>I/flutter: [PointerData(x: 601.0, y: 565.0)]
-I/flutter: [PointerData(x: 600.0, y: 565.0)]
-I/flutter: [PointerData(x: 599.0, y: 566.0)]
-I/flutter: [PointerData(x: 598.0, y: 568.0)]
-I/flutter: [PointerData(x: 596.0, y: 572.0)]
+<p>上面的代码很简单，首先实现了onBeginFrame和onDrawFrame回调，然后调用window的scheduleFrame注册VSync监听。</p>
+<p>运行该程序，输出结果如下：</p>
+<pre><code>I/flutter ( 4296): scheduleFrame
+I/flutter ( 4296): onBeginFrame: 281:12:30.761601
+I/flutter ( 4296): onDrawFrame
 </code></pre>
-<p>上面的数据就是事件的原始数据，在Flutter中，Flutter Framework会对其进行封装处理和分发，最终才会被对应的组件消费，具体我们可以在GestureBinding类的initInstances方法中看到。</p>
-<pre><code class="language-dart">mixin GestureBinding on BindingBase implements HitTestable, HitTestDispatcher, HitTestTarget {
+<p>其实在Flutter Framework中，UI的渲染就是通过监听这个来触发的，Flutter Framework对其进行了封装，通过一个渲染流水线（Rendering pipline）来进行UI的渲染，具体我们在SchedulerBinding类中的initInstances方法中可以看到。</p>
+<pre><code class="language-dart">mixin SchedulerBinding on BindingBase, ServicesBinding {
   @override
   void initInstances() {
     super.initInstances();
     _instance = this;
-    window.onPointerDataPacket = _handlePointerDataPacket;
+    window.onBeginFrame = _handleBeginFrame;
+    window.onDrawFrame = _handleDrawFrame;
+    
+    // ......
   }
 
-    void _handlePointerDataPacket(ui.PointerDataPacket packet) {
-    // We convert pointer data to logical pixels so that e.g. the touch slop can be
-    // defined in a device-independent manner.
-    _pendingPointerEvents.addAll(PointerEventConverter.expand(packet.data, window.devicePixelRatio));
-    if (!locked)
-      _flushPointerEventQueue();
+  void _handleBeginFrame(Duration rawTimeStamp) {
+    if (_warmUpFrame) {
+      assert(!_ignoreNextEngineDrawFrame);
+      _ignoreNextEngineDrawFrame = true;
+      return;
+    }
+    handleBeginFrame(rawTimeStamp);
   }
 
-    void _flushPointerEventQueue() {
-    assert(!locked);
-    while (_pendingPointerEvents.isNotEmpty)
-      _handlePointerEvent(_pendingPointerEvents.removeFirst());
+  void _handleDrawFrame() {
+    if (_ignoreNextEngineDrawFrame) {
+      _ignoreNextEngineDrawFrame = false;
+      return;
+    }
+    handleDrawFrame();
   }
-
+  
   // ......
 }
 </code></pre>
-<p>这里暂时进行深入，后续有机会会专门进行介绍。</p>
-<p>不仅只有事件依赖于Window，从Window源码中我们可以很多东西都依赖于它，所以，学习Flutter源码的第一步就是弄清楚Window的作用。从这篇文章，我们可以看到Window是Flutter应用运行的纽带，它确保了Flutter Framework跟Engine之间的通信，如果没有Window这些接口的支撑，Framework只是一个没有灵魂的肉体。其实我们自己完全可以基于Window搭建一套自己的框架来取代Flutter Framework层。</p>
-<h3 id="参考文章">参考文章：</h3>
-<p>https://juejin.im/post/5c7cd2f4e51d4537b05b0974<br>
-https://mp.weixin.qq.com/s/ncViI0KGikPUIZ7BlEHGOA<br>
-https://book.flutterchina.club/chapter14/flutter_app_startup.html</p>
+<p>上面的代码涉及到渲染的整个流水线过程，这里就不进行展开，后面会专门进行分析，这里需要重点理解的是整个Vsync机制，它是UI绘制的发动机，通过它的驱动UI才能不断的进行绘制。</p>
+<h3 id="参考文章">参考文章</h3>
+<p>https://juejin.im/post/5b7767fef265da43803bdc65<br>
+http://gityuan.com/2019/06/15/flutter_ui_draw/<br>
+https://book.flutterchina.club/chapter14/flutter_app_startup.html<br>
+https://www.jianshu.com/p/a9364f778bf8<br>
+https://juejin.im/post/5c7cd2f4e51d4537b05b0974<br>
+https://coolegos.github.io/2017/10/18/Andorid%E4%B8%ADVSync%E6%9C%BA%E5%88%B6%E7%9A%84%E4%BB%8B%E7%BB%8D/</p>
 </div>
                                     <div class="mdui-divider mdui-m-b-2"></div>
                                     <div class="mdui-row-xs-2 post-fenye">
                                        
-                                        <div class="mdui-col"> <div class="mdui-text-left"><a href="https://pianpian315.github.io/post/flutter-zhong-de-vsync-ji-zhi">Flutter中的VSync机制</a></div></div>
+                                        <div class="mdui-col"> </div>
                                         
 
                                         
-                                        <div class="mdui-col"><div class="mdui-text-right "><a href="https://pianpian315.github.io/post/openjdk-yuan-ma-xia-zai">OpenJDK源码下载</a></div> </div>
+                                        <div class="mdui-col"><div class="mdui-text-right "><a href="https://pianpian315.github.io/post/flutter-zhong-de-window">Flutter中的Window</a></div> </div>
                                        
                                       </div>
                                    

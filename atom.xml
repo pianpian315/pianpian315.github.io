@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://pianpian315.github.io</id>
     <title>Pianpian&apos;s Blog</title>
-    <updated>2019-11-10T06:36:51.428Z</updated>
+    <updated>2019-11-10T06:50:00.469Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://pianpian315.github.io"/>
     <link rel="self" href="https://pianpian315.github.io/atom.xml"/>
@@ -10,6 +10,83 @@
     <logo>https://pianpian315.github.io/images/avatar.png</logo>
     <icon>https://pianpian315.github.io/favicon.ico</icon>
     <rights>All rights reserved 2019, Pianpian&apos;s Blog</rights>
+    <entry>
+        <title type="html"><![CDATA[Flutter中的VSync机制]]></title>
+        <id>https://pianpian315.github.io/post/flutter-zhong-de-vsync-ji-zhi</id>
+        <link href="https://pianpian315.github.io/post/flutter-zhong-de-vsync-ji-zhi">
+        </link>
+        <updated>2019-11-10T06:42:05.000Z</updated>
+        <content type="html"><![CDATA[<p>我们知道，UI的显示是一帧一帧的，一次绘制过程，我们称其为一帧，在Flutter中，engine是通过VSync信号不断地触发每一帧的绘制，我们之所以说Flutter可以实现60fps，就是因为一秒钟可以触发60次重绘，那绘制是如何通过VSync信号进行驱动的呢？<br>
+<img src="https://pianpian315.github.io/post-images/1573368494773.png" alt=""></p>
+<p>VSync可以理解为一种定时中断，系统在每次可以进行绘制的时候都会发送VSync信号，CPU/GPU收到信号后马上处理绘制。所以，在Flutter中，当需要进行渲染绘制的时候，我们就需要监听VSync信号，当有VSync信号产生的时候，就可以绘制操作。<br>
+<img src="https://pianpian315.github.io/post-images/1573368549589.png" alt=""></p>
+<p>那现在的问题就是如果需要进行绘制操作，如何来监听这个VSync信号呢？我们首先需要通过引擎Engine的ScheduleFrame()方法来注册VSYNC信号回调，这个时候当Vsync信号到来的时候就会收到通知，然后就可以进行渲染绘制操作了。</p>
+<p>ScheduleFrame()是Flutter Engine里面的方法，我们在Flutter Framework中如何调用到这个方法了，这个时候上一篇文章讲解的Window就发挥出作用了，在Window中有一个native的scheduleFrame方法，它调用的就是引擎Engine的ScheduleFrame()方法，跟Java中的JNI机制差不多，注册完成之后，当下一个VSync信息到来的时候，Window类中的_handleBeginFrame()和_handleDrawFrame()就会被回调，这样我们就可以收到绘制通知，具体的源码调用过程这里就不展开了，感兴趣的可以参考文章：http://gityuan.com/2019/06/15/flutter_ui_draw/。</p>
+<p>下面我们同样举个例子来验证一下这个监听和回调过程：</p>
+<pre><code class="language-dart">import 'dart:ui';
+
+void main() {
+
+  window.onBeginFrame = (Duration rawTimeStamp) {
+    print(&quot;onBeginFrame: &quot; + rawTimeStamp.toString());
+  };
+
+  window.onDrawFrame = () {
+    print(&quot;onDrawFrame&quot;);
+  };
+
+  print(&quot;scheduleFrame&quot;);
+  window.scheduleFrame();
+}
+</code></pre>
+<p>上面的代码很简单，首先实现了onBeginFrame和onDrawFrame回调，然后调用window的scheduleFrame注册VSync监听。</p>
+<p>运行该程序，输出结果如下：</p>
+<pre><code>I/flutter ( 4296): scheduleFrame
+I/flutter ( 4296): onBeginFrame: 281:12:30.761601
+I/flutter ( 4296): onDrawFrame
+</code></pre>
+<p>其实在Flutter Framework中，UI的渲染就是通过监听这个来触发的，Flutter Framework对其进行了封装，通过一个渲染流水线（Rendering pipline）来进行UI的渲染，具体我们在SchedulerBinding类中的initInstances方法中可以看到。</p>
+<pre><code class="language-dart">mixin SchedulerBinding on BindingBase, ServicesBinding {
+  @override
+  void initInstances() {
+    super.initInstances();
+    _instance = this;
+    window.onBeginFrame = _handleBeginFrame;
+    window.onDrawFrame = _handleDrawFrame;
+    
+    // ......
+  }
+
+  void _handleBeginFrame(Duration rawTimeStamp) {
+    if (_warmUpFrame) {
+      assert(!_ignoreNextEngineDrawFrame);
+      _ignoreNextEngineDrawFrame = true;
+      return;
+    }
+    handleBeginFrame(rawTimeStamp);
+  }
+
+  void _handleDrawFrame() {
+    if (_ignoreNextEngineDrawFrame) {
+      _ignoreNextEngineDrawFrame = false;
+      return;
+    }
+    handleDrawFrame();
+  }
+  
+  // ......
+}
+</code></pre>
+<p>上面的代码涉及到渲染的整个流水线过程，这里就不进行展开，后面会专门进行分析，这里需要重点理解的是整个Vsync机制，它是UI绘制的发动机，通过它的驱动UI才能不断的进行绘制。</p>
+<h3 id="参考文章">参考文章</h3>
+<p>https://juejin.im/post/5b7767fef265da43803bdc65<br>
+http://gityuan.com/2019/06/15/flutter_ui_draw/<br>
+https://book.flutterchina.club/chapter14/flutter_app_startup.html<br>
+https://www.jianshu.com/p/a9364f778bf8<br>
+https://juejin.im/post/5c7cd2f4e51d4537b05b0974<br>
+https://coolegos.github.io/2017/10/18/Andorid%E4%B8%ADVSync%E6%9C%BA%E5%88%B6%E7%9A%84%E4%BB%8B%E7%BB%8D/</p>
+]]></content>
+    </entry>
     <entry>
         <title type="html"><![CDATA[Flutter中的Window]]></title>
         <id>https://pianpian315.github.io/post/flutter-zhong-de-window</id>
