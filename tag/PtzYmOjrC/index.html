@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
-        <head>
+       <head>
         <meta name="viewport" content="width=device-width,minimum-scale=1,maximum-scale=1,initial-scale=1,user-scalable=no" />
         <meta charset="utf-8">
-        <title>项目分支管理 | Pianpian&#39;s Blog</title>
+        <title>Java源码 | Pianpian&#39;s Blog</title>
         <link rel="stylesheet" href="https://pianpian315.github.io/styles/main.css">
         <link rel="stylesheet" href="https://at.alicdn.com/t/font_1423691_1fcfxbwa79n.css">
         <link href="https://cdn.bootcss.com/animate.css/3.7.2/animate.min.css" rel="stylesheet">
@@ -14,7 +14,7 @@
 
     </head>
     <body>
-              <header class="header mdui-m-b-5">      
+          <header class="header mdui-m-b-5">      
             <div class="container  ">
                 <div class="index-title animated fadeInDown mdui-text-center mdui-text-color-white mdui-m-b-2" style="animation-delay: 0.2s"><a href="https://pianpian315.github.io">Pianpian&#39;s Blog</a></div>
                 <div class="mdui-text-color-white animated fadeInDown mdui-text-center  mdui-m-b-3" style="animation-delay: 0.4s">不积跬步，无以至千里</div>
@@ -61,67 +61,31 @@
         </header>
         <div class="mdui-container ">
                 <div class="mdui-row">
-                        <div class="mdui-col-md-8 mdui-col-offset-md-2 ">
-                                <article class="mdui-p-a-2 post animated fadeIn" style="animation-delay: 0.8s;animation-duration: 2s">
-                                    <div class="post-title  mdui-m-b-1">项目分支管理</div>
-                                    <div class="mdui-typo-body-2 mdui-m-b-2" datetime="2019-09-18 21:55:17">2019-09-18 / 1 min read</div>
-                                    <div class="mdui-m-b-2 mdui-typo post-neirong"><p>分支的管理对于项目的开发非常重要，下面结合自身项目经验说说分支的管理。</p>
-<p>项目的代码分支主要有以下几条线：</p>
-<p>(1) feature-v*：feature分支，用于各版本的feature迭代开发</p>
-<p>(2) apk-dev：开发分支，用于编译线下测试版本（debug版本）</p>
-<p>(3) apk-rel：发布分支，用于编译线上发布版本（release版本）</p>
-<p>每一个版本建立一个专门的feature分支（比如，feature-v1, feature-v2, feature-v3......）。在一个版本开发完毕后，把feature分支merge到apk-dev分支；下一个版本以最新的apk-dev为base建立新的feature分支；apk-dev分支FC测试通过后将apk-dev分支merge到apk-rel分支上，然后apk-rel分支RC测试通过后即可进行上线发布。</p>
-<p>feature-v* --&gt; apk-dev --&gt; apk-rel</p>
-<p>另外附上一个参考链接：<br>
-http://www.ruanyifeng.com/blog/2012/07/git.html</p>
-</div>
-                                    <div class="mdui-divider mdui-m-b-2"></div>
-                                    <div class="mdui-row-xs-2 post-fenye">
-                                       
-                                        <div class="mdui-col"> <div class="mdui-text-left"><a href="https://pianpian315.github.io/post/qian-xi-xiang-mu-tuan-dui-guan-li">项目团队管理</a></div></div>
-                                        
-
-                                        
-                                        <div class="mdui-col"><div class="mdui-text-right "><a href="https://pianpian315.github.io/post/qian-tan-xiang-mu-liu-cheng-gui-fan">项目流程规范</a></div> </div>
-                                       
-                                      </div>
-                                   
-                                    <div class="mdui-divider mdui-m-t-2 mdui-m-b-2"></div>
-                                    
-                                     <script src="https://pianpian315.github.io/media/scripts/Valine.min.js"></script>
- <div class="comment"></div>
-
-<script>
-      new Valine({
-            el: '.comment',
-
-
-
-            path: window.location.pathname,
-            pageSize: 30,
-            avatar:'mm', 
-       })
-    </script> 
-<script>
-    if(window.location.hash){
-        var checkExist = setInterval(function() {
-           if ($(window.location.hash).length) {
-              $('html, body').animate({scrollTop: $(window.location.hash).offset().top-90}, 1000);
-              clearInterval(checkExist);
-           }
-        }, 100);
-    }
-</script>
+                        <div class="mdui-col-md-8 mdui-col-offset-md-2 mdui-m-t-1">
+                                                         
+                               <article class="mdui-p-a-5 index-list mdui-m-b-3 animated fadeIn" style="animation-delay: 0.8s;animation-duration: 2s">
+                                    <div class="mdui-typo-body-2 mdui-m-b-1" datetime="2019-11-20 22:15:47">2019-11-20</div>
+                                    <div class="mdui-typo-headline mdui-m-b-3 index-list-title index-guo"><a href="https://pianpian315.github.io/post/java-zhong-synchronized-shi-xian-yuan-li">Java中synchronized实现原理</a></div>
+                                    <div class="mdui-typo-subheading mdui-m-b-2 index-neirong"></div>
+                                    <div class="index-list-rm index-guo"><a href="https://pianpian315.github.io/post/java-zhong-synchronized-shi-xian-yuan-li">Read More</a></div>
                                 </article>
+                                
+                               <article class="mdui-p-a-5 index-list mdui-m-b-3 animated fadeIn" style="animation-delay: 0.8s;animation-duration: 2s">
+                                    <div class="mdui-typo-body-2 mdui-m-b-1" datetime="2019-09-29 09:25:58">2019-09-29</div>
+                                    <div class="mdui-typo-headline mdui-m-b-3 index-list-title index-guo"><a href="https://pianpian315.github.io/post/openjdk-yuan-ma-xia-zai">OpenJDK源码下载</a></div>
+                                    <div class="mdui-typo-subheading mdui-m-b-2 index-neirong"></div>
+                                    <div class="index-list-rm index-guo"><a href="https://pianpian315.github.io/post/openjdk-yuan-ma-xia-zai">Read More</a></div>
+                                </article>
+                                
+                                                            <nav class="mdui-m-t-5">
+                                
+                                
+                                </nav>     
 
-                                    
                         </div>
                       </div>
-    
-                
-
               </div>
-                    <footer class="footer mdui-m-t-5 mdui-text-center">
+                <footer class="footer mdui-m-t-5 mdui-text-center">
                <nav class="social-links">
                       <ul>
                       
