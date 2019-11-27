@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://pianpian315.github.io</id>
     <title>Pianpian&apos;s Blog</title>
-    <updated>2019-11-26T13:54:29.428Z</updated>
+    <updated>2019-11-27T14:17:10.672Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://pianpian315.github.io"/>
     <link rel="self" href="https://pianpian315.github.io/atom.xml"/>
@@ -10,6 +10,318 @@
     <logo>https://pianpian315.github.io/images/avatar.png</logo>
     <icon>https://pianpian315.github.io/favicon.ico</icon>
     <rights>All rights reserved 2019, Pianpian&apos;s Blog</rights>
+    <entry>
+        <title type="html"><![CDATA[Java中AQS实现原理]]></title>
+        <id>https://pianpian315.github.io/post/java-zhong-aqs-shi-xian-yuan-li</id>
+        <link href="https://pianpian315.github.io/post/java-zhong-aqs-shi-xian-yuan-li">
+        </link>
+        <updated>2019-11-27T14:08:58.000Z</updated>
+        <content type="html"><![CDATA[<p>AQS即是AbstractQueuedSynchronizer，一个用来构建锁和同步工具的框架，包括常用的ReentrantLock、CountDownLatch、Semaphore等。</p>
+<p>AQS内部有两个非常重要的参数：<br>
+（1）state：state是int类型的，代表了加锁的状态。初始状态下，这个state的值是0。<br>
+（2）exclusiveOwnerThread：用来记录当前加锁的的线程，初始化状态下，这个变量是null。</p>
+<p>下面以ReentrantLock作为切入点来讲解AQS。</p>
+<h3 id="锁的获取reentrantlocklock">锁的获取：ReentrantLock.lock()</h3>
+<pre><code>public void lock() {
+    sync.lock();
+}
+</code></pre>
+<p>可以看到加锁操作实际是通过sync对象的lock()方法实现的，下面来看看这个sync对象。</p>
+<pre><code>abstract static class Sync extends AbstractQueuedSynchronizer
+</code></pre>
+<p>sync是一个静态内部类，它继承了AQS这个抽象类，前面说过AQS是一个同步工具，主要用来实现同步控制。从这里也可以看到，ReentrantLock最终确实是使用这个工具实现同步控制功能。</p>
+<p>通过源码可以看到，Sync这个类有两个具体的实现，分别是NofairSync(非公平锁),FailSync(公平锁)。</p>
+<p>公平锁：表示所有线程严格按照FIFO来获取锁<br>
+非公平锁：表示可以存在抢占锁的功能，也就是说不管当前队列上是否存在其他线程等待，新线程都有机会抢占锁</p>
+<p>首先具体来看看非公平锁NofairSyn作为主要分析逻辑。</p>
+<pre><code>final void lock() {
+    if (compareAndSetState(0, 1)) //通过cas操作来修改state状态，表示争抢锁的操作
+      setExclusiveOwnerThread(Thread.currentThread());//设置当前获得锁状态的线程
+    else
+      acquire(1); //尝试去获取锁
+}
+
+</code></pre>
+<p>上面过程分为三步：<br>
+（1）上面说过state表示锁状态，通过CAS来修改锁的状态，如果修改成功，表示成功抢占到锁，否则表示抢占锁失败<br>
+（2）上面说过，exclusiveOwnerThread表示当前加锁的线程，如果抢占到锁的话，接下来就是保存获得锁成功的当前线程<br>
+（3）如果抢占锁失败，就会调用acquire来走锁竞争逻辑</p>
+<p>到这里，我们可以看到AQS其实并没有我们想的那么复杂，就是通过state变量、加锁线程变量来记录加锁的状态，并且对其操作使用CAS进行原子操作。</p>
+<p>而ReentrantLock这种东西只是一个外层的API，内核中的锁机制实现都是依赖AQS组件的。</p>
+<p>下面来看看acquire的逻辑</p>
+<pre><code>public final void acquire(int arg) {
+    if (!tryAcquire(arg) &amp;&amp;
+        acquireQueued(addWaiter(Node.EXCLUSIVE), arg))
+        selfInterrupt();
+}
+</code></pre>
+<p>上面的过程同样分为三步：<br>
+（1）通过tryAcquire尝试获取独占锁，如果成功返回true，失败返回false。</p>
+<p>tryAcquire不能直接调用，因为是否获取锁成功是由子类决定的，前面我们说到非公平锁是由NofairSync实现的，我们具体看看NofairSync的tryAcquire方法。</p>
+<pre><code>protected final boolean tryAcquire(int acquires) {
+    return nonfairTryAcquire(acquires);
+}
+
+final boolean nonfairTryAcquire(int acquires) {
+    //获得当前执行的线程
+    final Thread current = Thread.currentThread();
+    int c = getState(); //获得state的值
+    if (c == 0) { //state=0说明当前是无锁状态
+        //通过cas操作来替换state的值改为1，因为在多线程环境中，直接修改state=1会存在线程安全问题
+        if (compareAndSetState(0, acquires)) {
+             //保存当前获得锁的线程
+            setExclusiveOwnerThread(current);
+            return true;
+        }
+    }
+    //这段逻辑就很简单了。如果是同一个线程来获得锁，则直接增加重入次数
+    else if (current == getExclusiveOwnerThread()) {
+        int nextc = c + acquires; //增加重入次数
+        if (nextc &lt; 0) // overflow
+            throw new Error(&quot;Maximum lock count exceeded&quot;);
+        setState(nextc);
+        return true;
+    }
+    return false;
+}
+</code></pre>
+<p>获取当前线程，判断当前的锁的状态<br>
+如果state=0表示当前是无锁状态，通过cas更新state状态的值<br>
+如果当前线程是属于重入，则增加重入次数</p>
+<p>（2）如果tryAcquire失败，则会通过addWaiter方法将当前线程封装成Node添加到AQS队列尾部</p>
+<p>AQS内部有一条双向的队列存放等待线程，节点是Node对象。</p>
+<pre><code>private Node addWaiter(Node mode) { //mode=Node.EXCLUSIVE
+    //将当前线程封装成Node，并且mode为独占锁
+    Node node = new Node(Thread.currentThread(), mode); 
+    // Try the fast path of enq; backup to full enq on failure
+    // tail是AQS的中表示同步队列队尾的属性，刚开始为null，所以进行enq(node)方法
+    Node pred = tail;
+    if (pred != null) { //tail不为空的情况，说明队列中存在节点数据
+        node.prev = pred;  //讲当前线程的Node的prev节点指向tail
+        if (compareAndSetTail(pred, node)) {//通过cas讲node添加到AQS队列
+            pred.next = node;//cas成功，把旧的tail的next指针指向新的tail
+            return node;
+        }
+    }
+    enq(node); //tail=null，将node添加到同步队列中
+    return node;
+}
+</code></pre>
+<p>将当前线程封装成Node<br>
+判断当前链表中的tail节点是否为空，如果不为空，则通过cas操作把当前线程的node添加到AQS队列<br>
+如果为空或者cas失败，调用enq将节点添加到AQS队列</p>
+<p>（3）调用acquireQueued进行锁的抢占和线程的挂起</p>
+<p>将添加到队列中的Node作为参数传入acquireQueued方法，这里面会做抢占锁的操作和线程挂起操作。</p>
+<pre><code>final boolean acquireQueued(final Node node, int arg) {
+    boolean failed = true;
+    try {
+        boolean interrupted = false;
+        for (;;) {
+            final Node p = node.predecessor();// 获取prev节点,若为null即刻抛出NullPointException
+            if (p == head &amp;&amp; tryAcquire(arg)) {// 如果前驱为head才有资格进行锁的抢夺
+                setHead(node); // 获取锁成功后就不需要再进行同步操作了,获取锁成功的线程作为新的head节点
+//凡是head节点,head.thread与head.prev永远为null, 但是head.next不为null
+                p.next = null; // help GC
+                failed = false; //获取锁成功
+                return interrupted;
+            }
+//如果获取锁失败，则根据节点的waitStatus决定是否需要挂起线程
+            if (shouldParkAfterFailedAcquire(p, node) &amp;&amp;
+                parkAndCheckInterrupt())// 若前面为true,则执行挂起,待下次唤醒的时候检测中断的标志
+                interrupted = true;
+        }
+    } finally {
+        if (failed) // 如果抛出异常则取消锁的获取,进行出队(sync queue)操作
+            cancelAcquire(node);
+    }
+}
+</code></pre>
+<p>获取当前节点的prev节点<br>
+如果prev节点为head节点，那么它就有资格去争抢锁，调用tryAcquire抢占锁<br>
+抢占锁成功以后，把获得锁的节点设置为head，并且移除原来的初始化head节点<br>
+如果获得锁失败，则根据waitStatus决定是否需要挂起线程<br>
+最后，通过cancelAcquire取消获得锁的操作</p>
+<h3 id="锁的释放reentrantlockunlock">锁的释放：ReentrantLock.unlock</h3>
+<pre><code>public void unlock() {
+    sync.release(1);
+}
+</code></pre>
+<p>可以看到调用的其实就是前面说的NofairSyn的release方法。</p>
+<pre><code>public final boolean release(int arg) {
+    if (tryRelease(arg)) {
+        Node h = head;
+        if (h != null &amp;&amp; h.waitStatus != 0)
+            unparkSuccessor(h);
+        return true;
+    }
+    return false;
+}
+</code></pre>
+<p>这个方法里面做两件事，1，释放锁 ；2，唤醒park的线程</p>
+<p>下面来看看NofairSyn的tryRelease方法。</p>
+<pre><code>protected final boolean tryRelease(int releases) {
+    int c = getState() - releases; // 这里是将锁的数量减1
+    if (Thread.currentThread() != getExclusiveOwnerThread())// 如果释放的线程和获取锁的线程不是同一个，抛出非法监视器状态异常
+        throw new IllegalMonitorStateException();
+    boolean free = false;
+    if (c == 0) { 
+// 由于重入的关系，不是每次释放锁c都等于0，
+    // 直到最后一次释放锁时，才会把当前线程释放
+        free = true;
+        setExclusiveOwnerThread(null);
+    }
+    setState(c);
+    return free;
+}
+</code></pre>
+<p>这就是将前面说的state变量、加锁线程变量进行重置的操作，因为他们记录的就是锁的状态，锁释放了这个状态也就重置为无锁状态了。也就是将state状态设置为0，将排它锁的Owner设置为null，以使得其它的线程有机会进行执行。不过这里需要注意的是，只有state减1之后为0才会进行锁的释放，否则该线程还会继续持有锁，因为锁是可以重入的，如果state减1之后不为0就说明有重入线程。</p>
+<p>当前线程被释放之后，就需要从阻塞队列中唤醒下一个节点的线程。</p>
+<h3 id="参考文章">参考文章：</h3>
+<p>https://segmentfault.com/a/1190000017372067<br>
+https://mp.weixin.qq.com/s/atULuqIqhMcctG6xD3LgSA<br>
+https://www.jianshu.com/p/fe027772e156<br>
+https://blog.csdn.net/L_BestCoder/article/details/79306039</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Java中CAS的实现原理]]></title>
+        <id>https://pianpian315.github.io/post/java-zhong-cas-de-shi-xian-yuan-li</id>
+        <link href="https://pianpian315.github.io/post/java-zhong-cas-de-shi-xian-yuan-li">
+        </link>
+        <updated>2019-11-27T14:05:28.000Z</updated>
+        <content type="html"><![CDATA[<p>CAS的全称为Compare And Swap，直译就是比较交换。是一条CPU的原子指令，其作用是让CPU先进行比较两个值是否相等，然后原子地更新某个位置的值。</p>
+<p>在 java.util.concurrent 下面的源码中，Atomic, ReentrantLock 都使用了Unsafe类中的方法来保证并发的安全性，其内部实现就是利用CAS实现原子性操作的。</p>
+<p>下面重点来看看AtomicInteger中getAndIncrement方法的实现</p>
+<pre><code>//方法相当于原子性的 ++i
+public final int getAndIncrement() {
+    //三个参数，1、当前的实例 2、value实例变量的偏移量 3、递增的值。
+    return unsafe.getAndAddInt(this, valueOffset, 1);
+}
+</code></pre>
+<p>CAS 操作包含三个操作数 ：内存偏移量位置（V）、预期原值（A）和新值(B)。 如果内存位置的值与预期原值相匹配，那么处理器会自动将该位置值更新为新值 。否则，处理器不做任何操作。</p>
+<p>在 unsafe 中，getAndAddInt 如下：</p>
+<pre><code>public final int getAndAddInt(Object o, long offset, int delta) {
+    int v;
+    do {
+	// //获取对象内存地址偏移量上的数值v
+        v = getIntVolatile(o, offset);
+	// //如果现在还是v,设置为 v + delta,否则返回false,继续循环再次重试.
+    } while (!compareAndSwapInt(o, offset, v, v + delta));
+    return v;
+}
+</code></pre>
+<p>在 getAndAddInt 方法中，会先使用 getIntVolatile 读取 Object 对应偏移 offset 中的值，从 Volatile 可以看出来这个值肯定是内存中实时的最新值。</p>
+<p>得到最新值后，调用 compareAndSwapInt 来更新最新值，方法代码如下：</p>
+<pre><code>public final native boolean compareAndSwapInt(Object o, long offset,
+                                              int expected,
+                                              int x);
+</code></pre>
+<p>compareAndSwapInt 四个参数：</p>
+<p>1、当前的实例<br>
+2、实例变量的内存地址偏移量<br>
+3、预期的旧值<br>
+4、要更新的值</p>
+<p>如果对象 o 中 offset 偏移位置的值等于期望值(expected)，就将该 offset 处的值更新为 x，当更新成功时，返回 true。结合前面调用来看，如果当前值是 v，就设置为 v+1，否则返回值为false。</p>
+<p>下面来简单看看compareAndSwapInt的实现。</p>
+<pre><code>// unsafe.cpp
+/*
+ * 这个看起来好像不像一个函数，不过不用担心，不是重点。UNSAFE_ENTRY 和 UNSAFE_END 都是宏，
+ * 在预编译期间会被替换成真正的代码。下面的 jboolean、jlong 和 jint 等是一些类型定义（typedef）：
+ *
+ * 省略部分内容
+ */
+UNSAFE_ENTRY(jboolean, Unsafe_CompareAndSwapInt(JNIEnv *env, jobject unsafe, jobject obj, jlong offset, jint e, jint x))
+  UnsafeWrapper(&quot;Unsafe_CompareAndSwapInt&quot;);
+  oop p = JNIHandles::resolve(obj);
+  // 根据偏移量，计算 value 的地址。这里的 offset 就是 AtomaicInteger 中的 valueOffset
+  jint* addr = (jint *) index_oop_from_field_offset_long(p, offset);
+  // 调用 Atomic 中的函数 cmpxchg，该函数声明于 Atomic.hpp 中
+  return (jint)(Atomic::cmpxchg(x, addr, e)) == e;
+UNSAFE_END
+
+p是取出的对象，addr是p中offset处的地址，也就是取出p中偏移地址为offset的value值的地址addr，然后调用了Atomic::cmpxchg(x, addr, e)，其中参数x是即将更新的值，参数e是原内存的值。
+
+// atomic.cpp
+unsigned Atomic::cmpxchg(unsigned int exchange_value, volatile unsigned int* dest, unsigned int compare_value) {
+  assert(sizeof(unsigned int) == sizeof(jint), &quot;more work to do&quot;);
+  /*
+   * 根据操作系统类型调用不同平台下的重载函数，这个在预编译期间编译器会决定调用哪个平台下的重载
+   * 函数。相关的预编译逻辑如下：
+   *
+   * atomic.inline.hpp：
+   *    #include &quot;runtime/atomic.hpp&quot;
+   *  
+   *    // Linux
+   *    #ifdef TARGET_OS_ARCH_linux_x86
+   *    # include &quot;atomic_linux_x86.inline.hpp&quot;
+   *    #endif
+   * 
+   *    // 省略部分代码
+   *  
+   *    // Windows
+   *    #ifdef TARGET_OS_ARCH_windows_x86
+   *    # include &quot;atomic_windows_x86.inline.hpp&quot;
+   *    #endif
+   *  
+   *    // BSD
+   *    #ifdef TARGET_OS_ARCH_bsd_x86
+   *    # include &quot;atomic_bsd_x86.inline.hpp&quot;
+   *    #endif
+   *
+   */
+  return (unsigned int)Atomic::cmpxchg((jint)exchange_value, (volatile jint*)dest,
+                                       (jint)compare_value);
+}
+
+</code></pre>
+<p>上面其实就是根据不同的系统调用不同的实现，接下来，具体看看Linux X86平台下的 Atomic::cmpxchg 函数。</p>
+<pre><code>inline jint Atomic::cmpxchg(jint exchange_value, volatile jint* dest, jint compare_value) {
+  int mp = os::is_MP();
+  __asm__ volatile (LOCK_IF_MP(%4) &quot;cmpxchgl %1,(%3)&quot;
+                    : &quot;=a&quot; (exchange_value)
+                    : &quot;r&quot; (exchange_value), &quot;a&quot; (compare_value), &quot;r&quot; (dest), &quot;r&quot; (mp)
+                    : &quot;cc&quot;, &quot;memory&quot;);
+  return exchange_value;
+}
+</code></pre>
+<p>os::is_MP判断当前系统是否为多核系统，如果是就给总线加锁，所以同一芯片上的其他处理器就暂时不能通过总线访问内存，保证了该指令在多处理器环境下的原子性。</p>
+<p>其中，%1 就是exchange_value, %3是dest, %4就是mp， r表示任意寄存器，a还是eax寄存器。cmpxchgl会默认比较eax寄存器的值即compare_value和exchange_value的值，如果相等，就把dest的值赋值给exchange_value,否则，将exchange_value赋值给eax。</p>
+<p>可以看到，CAS 的实现离不开处理器的支持。核心代码就是一条带 lock 前缀的 cmpxchgl 指令，最终通过CPU的cmpxchgl指令的支持，实现AtomicInteger的CAS操作的原子性。。</p>
+<h3 id="参考文章">参考文章：</h3>
+<p>https://segmentfault.com/a/1190000015881923<br>
+https://juejin.im/post/5a73cbbff265da4e807783f5<br>
+https://blog.csdn.net/isea533/article/details/80301535<br>
+https://www.cnblogs.com/dennyzhangdd/p/6734638.html</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Java中volatile实现原理]]></title>
+        <id>https://pianpian315.github.io/post/java-zhong-volatile-shi-xian-yuan-li</id>
+        <link href="https://pianpian315.github.io/post/java-zhong-volatile-shi-xian-yuan-li">
+        </link>
+        <updated>2019-11-27T14:03:00.000Z</updated>
+        <content type="html"><![CDATA[<p>volatile的作用就是在多处理器开发中保证了共享变量的“可见性”。可见性的意思是当一个线程修改一个共享变量时，另外一个线程能读到这个修改的值。</p>
+<p>下面我们来看看volatile到底如何保证可见性的。</p>
+<p>Java 代码：</p>
+<pre><code>instance = new Singleton();//instance 是 volatile 变量
+</code></pre>
+<p>汇编代码：</p>
+<pre><code>0x01a3de1d: movb $0x0,0x1104800(%esi);
+
+0x01a3de24: lock addl $0x0,(%esp);
+</code></pre>
+<p>有 volatile 变量修饰的共享变量进行写操作的时候会多第二行汇编代码，lock 前缀的指令在多核处理器下会引发了两件事情。</p>
+<p>（1）将当前处理器缓存行的数据会写回到系统内存。<br>
+（2）这个写回内存的操作会引起在其他 CPU 里缓存了该内存地址的数据无效。</p>
+<p>我们知道，处理器为了提高处理速度，不直接和内存进行通讯，而是先将系统内存的数据读到内部缓存后再进行操作，但操作完之后不知道何时会写到内存，这样就会出现数据不一致的问题，如果对声明了 Volatile 变量进行写操作，JVM 就会向处理器发送一条 Lock 前缀的指令，将这个变量所在缓存行的数据写回到系统内存，但是就算写回到内存，如果其他处理器缓存的值还是旧的，再执行计算操作就会有问题，所以，在多处理器下，为了保证各个处理器的缓存是一致的，就会实现缓存一致性协议，每个处理器通过嗅探在总线上传播的数据来检查自己缓存的值是不是过期了，当处理器发现自己缓存行对应的内存地址被修改，就会将当前处理器的缓存行设置成无效状态，当处理器要对这个数据进行修改操作的时候，会强制重新从系统内存里把数据读到处理器缓存里。</p>
+<p>所以，最终可以总结为：<br>
+（1）Lock 前缀指令会引起处理器缓存回写到内存。<br>
+（2）一个处理器的缓存回写到内存会导致其他处理器的缓存无效。</p>
+<p>这样最终就实现了数据的一致性，也就是可见性。</p>
+<h3 id="参考文章">参考文章：</h3>
+<p>https://www.infoq.cn/article/ftf-java-volatile/</p>
+]]></content>
+    </entry>
     <entry>
         <title type="html"><![CDATA[Java线程池ThreadPoolExecutor]]></title>
         <id>https://pianpian315.github.io/post/java-xian-cheng-chi-threadpoolexecutor</id>
@@ -970,66 +1282,6 @@ https://hunterzhao.io/post/2018/01/29/compile-openjdk10-source-code-on-mac/</p>
 <p>feature-v* --&gt; apk-dev --&gt; apk-rel</p>
 <p>另外附上一个参考链接：<br>
 http://www.ruanyifeng.com/blog/2012/07/git.html</p>
-]]></content>
-    </entry>
-    <entry>
-        <title type="html"><![CDATA[项目流程规范]]></title>
-        <id>https://pianpian315.github.io/post/qian-tan-xiang-mu-liu-cheng-gui-fan</id>
-        <link href="https://pianpian315.github.io/post/qian-tan-xiang-mu-liu-cheng-gui-fan">
-        </link>
-        <updated>2019-09-18T13:50:41.000Z</updated>
-        <content type="html"><![CDATA[<p>一个需求从立项到上线，会有一个漫长的协作过程，下面结合自身项目经验对整个过程进行总结。</p>
-<h4 id="1-需求评审">1、需求评审</h4>
-<p>参与角色：PM, RD, QA, UE</p>
-<p>由PM主持，主要是对具体需求展开说明。</p>
-<h4 id="2-交互评审">2、交互评审</h4>
-<p>参与角色：UE, PM, RD, QA</p>
-<p>由UE主持，主要是根据需求演示交互设计方案。</p>
-<h4 id="3-case评审">3、case评审</h4>
-<p>参与角色：QA, PM, RD, UE</p>
-<p>由QA主持，主要是根据需求对具体case进行说明。</p>
-<h4 id="4-开发">4、开发</h4>
-<p>参与角色：RD</p>
-<p>RD根据需求和设计进行需求开发</p>
-<h4 id="5-测试">5、测试</h4>
-<p>参与角色：QA</p>
-<p>待RD需求提测之后，QA根据case进行测试，包括FC测试和RC测试。</p>
-<h4 id="6-show-case">6、show case</h4>
-<p>参与角色：QA, PM, RD, UE</p>
-<p>待测试完成之后，PM组织所有人进行最终产品演示。</p>
-<h4 id="7-灰度">7、灰度</h4>
-<p>小范围发布上线，观察数据。</p>
-<h4 id="8-发布">8、发布</h4>
-<p>灰度稳定之后，全量发布。</p>
-<figure data-type="image" tabindex="1"><img src="https://pianpian315.github.io/post-images/1568814716451.png" alt=""></figure>
-]]></content>
-    </entry>
-    <entry>
-        <title type="html"><![CDATA[项目开发流程]]></title>
-        <id>https://pianpian315.github.io/post/qian-tan-xiang-mu-kai-fa-liu-cheng</id>
-        <link href="https://pianpian315.github.io/post/qian-tan-xiang-mu-kai-fa-liu-cheng">
-        </link>
-        <updated>2019-09-18T13:39:07.000Z</updated>
-        <content type="html"><![CDATA[<p>为了保证项目保质保量的推进，每一个项目需要有一个规范的开发流程，下面结合自身项目经验，对项目开发流程进行说明。</p>
-<p>项目基本可以分为项目管理（需求）、文档管理（设计）、代码管理（开发）、持续交付（发布）四个过程。</p>
-<h4 id="项目管理">项目管理</h4>
-<p>主要是对需求、bug进行跟踪和管理。</p>
-<h4 id="文档管理">文档管理</h4>
-<p>主要是由RD对需求的开发说明文档进行输出。</p>
-<h4 id="代码管理">代码管理</h4>
-<p>主要是使用代码管理工具对代码进行管理，另外包括代码规范、代码质量检测。</p>
-<h4 id="持续集成">持续集成</h4>
-<p>流水线式的一站式编译发布和上线。主要包含自动化打包、测试（安全检测、性能检测、稳定性检测），发布。</p>
-<figure data-type="image" tabindex="1"><img src="https://pianpian315.github.io/post-images/1568814432609.png" alt=""></figure>
-]]></content>
-    </entry>
-    <entry>
-        <title type="html"><![CDATA[Java编码规范]]></title>
-        <id>https://pianpian315.github.io/post/android-kai-fa-gong-cheng-neng-li</id>
-        <link href="https://pianpian315.github.io/post/android-kai-fa-gong-cheng-neng-li">
-        </link>
-        <updated>2019-06-15T17:47:36.000Z</updated>
-        <content type="html"><![CDATA[<p>Java的编码规范可以参考<a href="https://github.com/google/styleguide">Google编码规范</a>中的<a href="https://google.github.io/styleguide/javaguide.html">Java编码规范</a>和<a href="https://github.com/alibaba/p3c/blob/master/%E9%98%BF%E9%87%8C%E5%B7%B4%E5%B7%B4Java%E5%BC%80%E5%8F%91%E6%89%8B%E5%86%8C%EF%BC%88%E8%AF%A6%E5%B0%BD%E7%89%88%EF%BC%89.pdf">阿里巴巴Java开发手册</a>中的Java开发规范。</p>
 ]]></content>
     </entry>
 </feed>

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html>
+        <head>
+        <meta name="viewport" content="width=device-width,minimum-scale=1,maximum-scale=1,initial-scale=1,user-scalable=no" />
+        <meta charset="utf-8">
+        <title>Java中AQS实现原理 | Pianpian&#39;s Blog</title>
+        <link rel="stylesheet" href="https://pianpian315.github.io/styles/main.css">
+        <link rel="stylesheet" href="https://at.alicdn.com/t/font_1423691_1fcfxbwa79n.css">
+        <link href="https://cdn.bootcss.com/animate.css/3.7.2/animate.min.css" rel="stylesheet">
+         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+        <script src="https://cdn.staticfile.org/jquery/3.4.1/jquery.min.js"></script>
+         <script src="https://cdn.bootcss.com/highlight.js/9.15.10/highlight.min.js"></script>
+         <script >hljs.initHighlightingOnLoad();</script>
+
+    </head>
+    <body>
+              <header class="header mdui-m-b-5">      
+            <div class="container  ">
+                <div class="index-title animated fadeInDown mdui-text-center mdui-text-color-white mdui-m-b-2" style="animation-delay: 0.2s"><a href="https://pianpian315.github.io">Pianpian&#39;s Blog</a></div>
+                <div class="mdui-text-color-white animated fadeInDown mdui-text-center  mdui-m-b-3" style="animation-delay: 0.4s">不积跬步，无以至千里</div>
+           
+            <nav id="nav" class="mdui-text-center animated fadeInDown" style="animation-delay: 0.6s">
+                   
+                            <li><a href="/">首页</a>
+                                <span class="nav-style top"></span>
+                                <span class="nav-style bottom"></span>
+                                <span class="nav-style left"></span>
+                                <span class="nav-style right"></span>
+                                </li>
+                    
+                            <li><a href="/archives">归档</a>
+                                <span class="nav-style top"></span>
+                                <span class="nav-style bottom"></span>
+                                <span class="nav-style left"></span>
+                                <span class="nav-style right"></span>
+                                </li>
+                    
+                            <li><a href="/tags">标签</a>
+                                <span class="nav-style top"></span>
+                                <span class="nav-style bottom"></span>
+                                <span class="nav-style left"></span>
+                                <span class="nav-style right"></span>
+                                </li>
+                    
+                            <li><a href="/post/books">书单</a>
+                                <span class="nav-style top"></span>
+                                <span class="nav-style bottom"></span>
+                                <span class="nav-style left"></span>
+                                <span class="nav-style right"></span>
+                                </li>
+                    
+                            <li><a href="/post/about">关于</a>
+                                <span class="nav-style top"></span>
+                                <span class="nav-style bottom"></span>
+                                <span class="nav-style left"></span>
+                                <span class="nav-style right"></span>
+                                </li>
+                    
+                  </nav>
+                </div>
+        </header>
+        <div class="mdui-container ">
+                <div class="mdui-row">
+                        <div class="mdui-col-md-8 mdui-col-offset-md-2 ">
+                                <article class="mdui-p-a-2 post animated fadeIn" style="animation-delay: 0.8s;animation-duration: 2s">
+                                    <div class="post-title  mdui-m-b-1">Java中AQS实现原理</div>
+                                    <div class="mdui-typo-body-2 mdui-m-b-2" datetime="2019-11-27 22:08:58">2019-11-27 / 8 min read</div>
+                                    <div class="mdui-m-b-2 mdui-typo post-neirong"><p>AQS即是AbstractQueuedSynchronizer，一个用来构建锁和同步工具的框架，包括常用的ReentrantLock、CountDownLatch、Semaphore等。</p>
+<p>AQS内部有两个非常重要的参数：<br>
+（1）state：state是int类型的，代表了加锁的状态。初始状态下，这个state的值是0。<br>
+（2）exclusiveOwnerThread：用来记录当前加锁的的线程，初始化状态下，这个变量是null。</p>
+<p>下面以ReentrantLock作为切入点来讲解AQS。</p>
+<h3 id="锁的获取reentrantlocklock">锁的获取：ReentrantLock.lock()</h3>
+<pre><code>public void lock() {
+    sync.lock();
+}
+</code></pre>
+<p>可以看到加锁操作实际是通过sync对象的lock()方法实现的，下面来看看这个sync对象。</p>
+<pre><code>abstract static class Sync extends AbstractQueuedSynchronizer
+</code></pre>
+<p>sync是一个静态内部类，它继承了AQS这个抽象类，前面说过AQS是一个同步工具，主要用来实现同步控制。从这里也可以看到，ReentrantLock最终确实是使用这个工具实现同步控制功能。</p>
+<p>通过源码可以看到，Sync这个类有两个具体的实现，分别是NofairSync(非公平锁),FailSync(公平锁)。</p>
+<p>公平锁：表示所有线程严格按照FIFO来获取锁<br>
+非公平锁：表示可以存在抢占锁的功能，也就是说不管当前队列上是否存在其他线程等待，新线程都有机会抢占锁</p>
+<p>首先具体来看看非公平锁NofairSyn作为主要分析逻辑。</p>
+<pre><code>final void lock() {
+    if (compareAndSetState(0, 1)) //通过cas操作来修改state状态，表示争抢锁的操作
+      setExclusiveOwnerThread(Thread.currentThread());//设置当前获得锁状态的线程
+    else
+      acquire(1); //尝试去获取锁
+}
+
+</code></pre>
+<p>上面过程分为三步：<br>
+（1）上面说过state表示锁状态，通过CAS来修改锁的状态，如果修改成功，表示成功抢占到锁，否则表示抢占锁失败<br>
+（2）上面说过，exclusiveOwnerThread表示当前加锁的线程，如果抢占到锁的话，接下来就是保存获得锁成功的当前线程<br>
+（3）如果抢占锁失败，就会调用acquire来走锁竞争逻辑</p>
+<p>到这里，我们可以看到AQS其实并没有我们想的那么复杂，就是通过state变量、加锁线程变量来记录加锁的状态，并且对其操作使用CAS进行原子操作。</p>
+<p>而ReentrantLock这种东西只是一个外层的API，内核中的锁机制实现都是依赖AQS组件的。</p>
+<p>下面来看看acquire的逻辑</p>
+<pre><code>public final void acquire(int arg) {
+    if (!tryAcquire(arg) &amp;&amp;
+        acquireQueued(addWaiter(Node.EXCLUSIVE), arg))
+        selfInterrupt();
+}
+</code></pre>
+<p>上面的过程同样分为三步：<br>
+（1）通过tryAcquire尝试获取独占锁，如果成功返回true，失败返回false。</p>
+<p>tryAcquire不能直接调用，因为是否获取锁成功是由子类决定的，前面我们说到非公平锁是由NofairSync实现的，我们具体看看NofairSync的tryAcquire方法。</p>
+<pre><code>protected final boolean tryAcquire(int acquires) {
+    return nonfairTryAcquire(acquires);
+}
+
+final boolean nonfairTryAcquire(int acquires) {
+    //获得当前执行的线程
+    final Thread current = Thread.currentThread();
+    int c = getState(); //获得state的值
+    if (c == 0) { //state=0说明当前是无锁状态
+        //通过cas操作来替换state的值改为1，因为在多线程环境中，直接修改state=1会存在线程安全问题
+        if (compareAndSetState(0, acquires)) {
+             //保存当前获得锁的线程
+            setExclusiveOwnerThread(current);
+            return true;
+        }
+    }
+    //这段逻辑就很简单了。如果是同一个线程来获得锁，则直接增加重入次数
+    else if (current == getExclusiveOwnerThread()) {
+        int nextc = c + acquires; //增加重入次数
+        if (nextc &lt; 0) // overflow
+            throw new Error(&quot;Maximum lock count exceeded&quot;);
+        setState(nextc);
+        return true;
+    }
+    return false;
+}
+</code></pre>
+<p>获取当前线程，判断当前的锁的状态<br>
+如果state=0表示当前是无锁状态，通过cas更新state状态的值<br>
+如果当前线程是属于重入，则增加重入次数</p>
+<p>（2）如果tryAcquire失败，则会通过addWaiter方法将当前线程封装成Node添加到AQS队列尾部</p>
+<p>AQS内部有一条双向的队列存放等待线程，节点是Node对象。</p>
+<pre><code>private Node addWaiter(Node mode) { //mode=Node.EXCLUSIVE
+    //将当前线程封装成Node，并且mode为独占锁
+    Node node = new Node(Thread.currentThread(), mode); 
+    // Try the fast path of enq; backup to full enq on failure
+    // tail是AQS的中表示同步队列队尾的属性，刚开始为null，所以进行enq(node)方法
+    Node pred = tail;
+    if (pred != null) { //tail不为空的情况，说明队列中存在节点数据
+        node.prev = pred;  //讲当前线程的Node的prev节点指向tail
+        if (compareAndSetTail(pred, node)) {//通过cas讲node添加到AQS队列
+            pred.next = node;//cas成功，把旧的tail的next指针指向新的tail
+            return node;
+        }
+    }
+    enq(node); //tail=null，将node添加到同步队列中
+    return node;
+}
+</code></pre>
+<p>将当前线程封装成Node<br>
+判断当前链表中的tail节点是否为空，如果不为空，则通过cas操作把当前线程的node添加到AQS队列<br>
+如果为空或者cas失败，调用enq将节点添加到AQS队列</p>
+<p>（3）调用acquireQueued进行锁的抢占和线程的挂起</p>
+<p>将添加到队列中的Node作为参数传入acquireQueued方法，这里面会做抢占锁的操作和线程挂起操作。</p>
+<pre><code>final boolean acquireQueued(final Node node, int arg) {
+    boolean failed = true;
+    try {
+        boolean interrupted = false;
+        for (;;) {
+            final Node p = node.predecessor();// 获取prev节点,若为null即刻抛出NullPointException
+            if (p == head &amp;&amp; tryAcquire(arg)) {// 如果前驱为head才有资格进行锁的抢夺
+                setHead(node); // 获取锁成功后就不需要再进行同步操作了,获取锁成功的线程作为新的head节点
+//凡是head节点,head.thread与head.prev永远为null, 但是head.next不为null
+                p.next = null; // help GC
+                failed = false; //获取锁成功
+                return interrupted;
+            }
+//如果获取锁失败，则根据节点的waitStatus决定是否需要挂起线程
+            if (shouldParkAfterFailedAcquire(p, node) &amp;&amp;
+                parkAndCheckInterrupt())// 若前面为true,则执行挂起,待下次唤醒的时候检测中断的标志
+                interrupted = true;
+        }
+    } finally {
+        if (failed) // 如果抛出异常则取消锁的获取,进行出队(sync queue)操作
+            cancelAcquire(node);
+    }
+}
+</code></pre>
+<p>获取当前节点的prev节点<br>
+如果prev节点为head节点，那么它就有资格去争抢锁，调用tryAcquire抢占锁<br>
+抢占锁成功以后，把获得锁的节点设置为head，并且移除原来的初始化head节点<br>
+如果获得锁失败，则根据waitStatus决定是否需要挂起线程<br>
+最后，通过cancelAcquire取消获得锁的操作</p>
+<h3 id="锁的释放reentrantlockunlock">锁的释放：ReentrantLock.unlock</h3>
+<pre><code>public void unlock() {
+    sync.release(1);
+}
+</code></pre>
+<p>可以看到调用的其实就是前面说的NofairSyn的release方法。</p>
+<pre><code>public final boolean release(int arg) {
+    if (tryRelease(arg)) {
+        Node h = head;
+        if (h != null &amp;&amp; h.waitStatus != 0)
+            unparkSuccessor(h);
+        return true;
+    }
+    return false;
+}
+</code></pre>
+<p>这个方法里面做两件事，1，释放锁 ；2，唤醒park的线程</p>
+<p>下面来看看NofairSyn的tryRelease方法。</p>
+<pre><code>protected final boolean tryRelease(int releases) {
+    int c = getState() - releases; // 这里是将锁的数量减1
+    if (Thread.currentThread() != getExclusiveOwnerThread())// 如果释放的线程和获取锁的线程不是同一个，抛出非法监视器状态异常
+        throw new IllegalMonitorStateException();
+    boolean free = false;
+    if (c == 0) { 
+// 由于重入的关系，不是每次释放锁c都等于0，
+    // 直到最后一次释放锁时，才会把当前线程释放
+        free = true;
+        setExclusiveOwnerThread(null);
+    }
+    setState(c);
+    return free;
+}
+</code></pre>
+<p>这就是将前面说的state变量、加锁线程变量进行重置的操作，因为他们记录的就是锁的状态，锁释放了这个状态也就重置为无锁状态了。也就是将state状态设置为0，将排它锁的Owner设置为null，以使得其它的线程有机会进行执行。不过这里需要注意的是，只有state减1之后为0才会进行锁的释放，否则该线程还会继续持有锁，因为锁是可以重入的，如果state减1之后不为0就说明有重入线程。</p>
+<p>当前线程被释放之后，就需要从阻塞队列中唤醒下一个节点的线程。</p>
+<h3 id="参考文章">参考文章：</h3>
+<p>https://segmentfault.com/a/1190000017372067<br>
+https://mp.weixin.qq.com/s/atULuqIqhMcctG6xD3LgSA<br>
+https://www.jianshu.com/p/fe027772e156<br>
+https://blog.csdn.net/L_BestCoder/article/details/79306039</p>
+</div>
+                                    <div class="mdui-divider mdui-m-b-2"></div>
+                                    <div class="mdui-row-xs-2 post-fenye">
+                                       
+                                        <div class="mdui-col"> </div>
+                                        
+
+                                        
+                                        <div class="mdui-col"><div class="mdui-text-right "><a href="https://pianpian315.github.io/post/java-zhong-cas-de-shi-xian-yuan-li">Java中CAS的实现原理</a></div> </div>
+                                       
+                                      </div>
+                                   
+                                    <div class="mdui-divider mdui-m-t-2 mdui-m-b-2"></div>
+                                    
+                                     <script src="https://pianpian315.github.io/media/scripts/Valine.min.js"></script>
+ <div class="comment"></div>
+
+<script>
+      new Valine({
+            el: '.comment',
+
+
+
+            path: window.location.pathname,
+            pageSize: 30,
+            avatar:'mm', 
+       })
+    </script> 
+<script>
+    if(window.location.hash){
+        var checkExist = setInterval(function() {
+           if ($(window.location.hash).length) {
+              $('html, body').animate({scrollTop: $(window.location.hash).offset().top-90}, 1000);
+              clearInterval(checkExist);
+           }
+        }, 100);
+    }
+</script>
+                                </article>
+
+                                    
+                        </div>
+                      </div>
+    
+                
+
+              </div>
+                    <footer class="footer mdui-m-t-5 mdui-text-center">
+               <nav class="social-links">
+                      <ul>
+                      
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      </ul>
+                    </nav>
+                  <div class="copyright">
+                      <p>贵在坚持，欢迎监督 <br/> Theme <a href="https://github.com/alterfang/gridea-theme-song/">宋</a> by <a href="https://shanbu.fun/">山卜方</a> </p>
+                  </div>
+                  
+              </footer>
+    </body>
+</html>

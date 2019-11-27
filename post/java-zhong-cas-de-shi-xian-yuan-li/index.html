@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+        <head>
+        <meta name="viewport" content="width=device-width,minimum-scale=1,maximum-scale=1,initial-scale=1,user-scalable=no" />
+        <meta charset="utf-8">
+        <title>Java中CAS的实现原理 | Pianpian&#39;s Blog</title>
+        <link rel="stylesheet" href="https://pianpian315.github.io/styles/main.css">
+        <link rel="stylesheet" href="https://at.alicdn.com/t/font_1423691_1fcfxbwa79n.css">
+        <link href="https://cdn.bootcss.com/animate.css/3.7.2/animate.min.css" rel="stylesheet">
+         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+        <script src="https://cdn.staticfile.org/jquery/3.4.1/jquery.min.js"></script>
+         <script src="https://cdn.bootcss.com/highlight.js/9.15.10/highlight.min.js"></script>
+         <script >hljs.initHighlightingOnLoad();</script>
+
+    </head>
+    <body>
+              <header class="header mdui-m-b-5">      
+            <div class="container  ">
+                <div class="index-title animated fadeInDown mdui-text-center mdui-text-color-white mdui-m-b-2" style="animation-delay: 0.2s"><a href="https://pianpian315.github.io">Pianpian&#39;s Blog</a></div>
+                <div class="mdui-text-color-white animated fadeInDown mdui-text-center  mdui-m-b-3" style="animation-delay: 0.4s">不积跬步，无以至千里</div>
+           
+            <nav id="nav" class="mdui-text-center animated fadeInDown" style="animation-delay: 0.6s">
+                   
+                            <li><a href="/">首页</a>
+                                <span class="nav-style top"></span>
+                                <span class="nav-style bottom"></span>
+                                <span class="nav-style left"></span>
+                                <span class="nav-style right"></span>
+                                </li>
+                    
+                            <li><a href="/archives">归档</a>
+                                <span class="nav-style top"></span>
+                                <span class="nav-style bottom"></span>
+                                <span class="nav-style left"></span>
+                                <span class="nav-style right"></span>
+                                </li>
+                    
+                            <li><a href="/tags">标签</a>
+                                <span class="nav-style top"></span>
+                                <span class="nav-style bottom"></span>
+                                <span class="nav-style left"></span>
+                                <span class="nav-style right"></span>
+                                </li>
+                    
+                            <li><a href="/post/books">书单</a>
+                                <span class="nav-style top"></span>
+                                <span class="nav-style bottom"></span>
+                                <span class="nav-style left"></span>
+                                <span class="nav-style right"></span>
+                                </li>
+                    
+                            <li><a href="/post/about">关于</a>
+                                <span class="nav-style top"></span>
+                                <span class="nav-style bottom"></span>
+                                <span class="nav-style left"></span>
+                                <span class="nav-style right"></span>
+                                </li>
+                    
+                  </nav>
+                </div>
+        </header>
+        <div class="mdui-container ">
+                <div class="mdui-row">
+                        <div class="mdui-col-md-8 mdui-col-offset-md-2 ">
+                                <article class="mdui-p-a-2 post animated fadeIn" style="animation-delay: 0.8s;animation-duration: 2s">
+                                    <div class="post-title  mdui-m-b-1">Java中CAS的实现原理</div>
+                                    <div class="mdui-typo-body-2 mdui-m-b-2" datetime="2019-11-27 22:05:28">2019-11-27 / 5 min read</div>
+                                    <div class="mdui-m-b-2 mdui-typo post-neirong"><p>CAS的全称为Compare And Swap，直译就是比较交换。是一条CPU的原子指令，其作用是让CPU先进行比较两个值是否相等，然后原子地更新某个位置的值。</p>
+<p>在 java.util.concurrent 下面的源码中，Atomic, ReentrantLock 都使用了Unsafe类中的方法来保证并发的安全性，其内部实现就是利用CAS实现原子性操作的。</p>
+<p>下面重点来看看AtomicInteger中getAndIncrement方法的实现</p>
+<pre><code>//方法相当于原子性的 ++i
+public final int getAndIncrement() {
+    //三个参数，1、当前的实例 2、value实例变量的偏移量 3、递增的值。
+    return unsafe.getAndAddInt(this, valueOffset, 1);
+}
+</code></pre>
+<p>CAS 操作包含三个操作数 ：内存偏移量位置（V）、预期原值（A）和新值(B)。 如果内存位置的值与预期原值相匹配，那么处理器会自动将该位置值更新为新值 。否则，处理器不做任何操作。</p>
+<p>在 unsafe 中，getAndAddInt 如下：</p>
+<pre><code>public final int getAndAddInt(Object o, long offset, int delta) {
+    int v;
+    do {
+	// //获取对象内存地址偏移量上的数值v
+        v = getIntVolatile(o, offset);
+	// //如果现在还是v,设置为 v + delta,否则返回false,继续循环再次重试.
+    } while (!compareAndSwapInt(o, offset, v, v + delta));
+    return v;
+}
+</code></pre>
+<p>在 getAndAddInt 方法中，会先使用 getIntVolatile 读取 Object 对应偏移 offset 中的值，从 Volatile 可以看出来这个值肯定是内存中实时的最新值。</p>
+<p>得到最新值后，调用 compareAndSwapInt 来更新最新值，方法代码如下：</p>
+<pre><code>public final native boolean compareAndSwapInt(Object o, long offset,
+                                              int expected,
+                                              int x);
+</code></pre>
+<p>compareAndSwapInt 四个参数：</p>
+<p>1、当前的实例<br>
+2、实例变量的内存地址偏移量<br>
+3、预期的旧值<br>
+4、要更新的值</p>
+<p>如果对象 o 中 offset 偏移位置的值等于期望值(expected)，就将该 offset 处的值更新为 x，当更新成功时，返回 true。结合前面调用来看，如果当前值是 v，就设置为 v+1，否则返回值为false。</p>
+<p>下面来简单看看compareAndSwapInt的实现。</p>
+<pre><code>// unsafe.cpp
+/*
+ * 这个看起来好像不像一个函数，不过不用担心，不是重点。UNSAFE_ENTRY 和 UNSAFE_END 都是宏，
+ * 在预编译期间会被替换成真正的代码。下面的 jboolean、jlong 和 jint 等是一些类型定义（typedef）：
+ *
+ * 省略部分内容
+ */
+UNSAFE_ENTRY(jboolean, Unsafe_CompareAndSwapInt(JNIEnv *env, jobject unsafe, jobject obj, jlong offset, jint e, jint x))
+  UnsafeWrapper(&quot;Unsafe_CompareAndSwapInt&quot;);
+  oop p = JNIHandles::resolve(obj);
+  // 根据偏移量，计算 value 的地址。这里的 offset 就是 AtomaicInteger 中的 valueOffset
+  jint* addr = (jint *) index_oop_from_field_offset_long(p, offset);
+  // 调用 Atomic 中的函数 cmpxchg，该函数声明于 Atomic.hpp 中
+  return (jint)(Atomic::cmpxchg(x, addr, e)) == e;
+UNSAFE_END
+
+p是取出的对象，addr是p中offset处的地址，也就是取出p中偏移地址为offset的value值的地址addr，然后调用了Atomic::cmpxchg(x, addr, e)，其中参数x是即将更新的值，参数e是原内存的值。
+
+// atomic.cpp
+unsigned Atomic::cmpxchg(unsigned int exchange_value, volatile unsigned int* dest, unsigned int compare_value) {
+  assert(sizeof(unsigned int) == sizeof(jint), &quot;more work to do&quot;);
+  /*
+   * 根据操作系统类型调用不同平台下的重载函数，这个在预编译期间编译器会决定调用哪个平台下的重载
+   * 函数。相关的预编译逻辑如下：
+   *
+   * atomic.inline.hpp：
+   *    #include &quot;runtime/atomic.hpp&quot;
+   *  
+   *    // Linux
+   *    #ifdef TARGET_OS_ARCH_linux_x86
+   *    # include &quot;atomic_linux_x86.inline.hpp&quot;
+   *    #endif
+   * 
+   *    // 省略部分代码
+   *  
+   *    // Windows
+   *    #ifdef TARGET_OS_ARCH_windows_x86
+   *    # include &quot;atomic_windows_x86.inline.hpp&quot;
+   *    #endif
+   *  
+   *    // BSD
+   *    #ifdef TARGET_OS_ARCH_bsd_x86
+   *    # include &quot;atomic_bsd_x86.inline.hpp&quot;
+   *    #endif
+   *
+   */
+  return (unsigned int)Atomic::cmpxchg((jint)exchange_value, (volatile jint*)dest,
+                                       (jint)compare_value);
+}
+
+</code></pre>
+<p>上面其实就是根据不同的系统调用不同的实现，接下来，具体看看Linux X86平台下的 Atomic::cmpxchg 函数。</p>
+<pre><code>inline jint Atomic::cmpxchg(jint exchange_value, volatile jint* dest, jint compare_value) {
+  int mp = os::is_MP();
+  __asm__ volatile (LOCK_IF_MP(%4) &quot;cmpxchgl %1,(%3)&quot;
+                    : &quot;=a&quot; (exchange_value)
+                    : &quot;r&quot; (exchange_value), &quot;a&quot; (compare_value), &quot;r&quot; (dest), &quot;r&quot; (mp)
+                    : &quot;cc&quot;, &quot;memory&quot;);
+  return exchange_value;
+}
+</code></pre>
+<p>os::is_MP判断当前系统是否为多核系统，如果是就给总线加锁，所以同一芯片上的其他处理器就暂时不能通过总线访问内存，保证了该指令在多处理器环境下的原子性。</p>
+<p>其中，%1 就是exchange_value, %3是dest, %4就是mp， r表示任意寄存器，a还是eax寄存器。cmpxchgl会默认比较eax寄存器的值即compare_value和exchange_value的值，如果相等，就把dest的值赋值给exchange_value,否则，将exchange_value赋值给eax。</p>
+<p>可以看到，CAS 的实现离不开处理器的支持。核心代码就是一条带 lock 前缀的 cmpxchgl 指令，最终通过CPU的cmpxchgl指令的支持，实现AtomicInteger的CAS操作的原子性。。</p>
+<h3 id="参考文章">参考文章：</h3>
+<p>https://segmentfault.com/a/1190000015881923<br>
+https://juejin.im/post/5a73cbbff265da4e807783f5<br>
+https://blog.csdn.net/isea533/article/details/80301535<br>
+https://www.cnblogs.com/dennyzhangdd/p/6734638.html</p>
+</div>
+                                    <div class="mdui-divider mdui-m-b-2"></div>
+                                    <div class="mdui-row-xs-2 post-fenye">
+                                       
+                                        <div class="mdui-col"> <div class="mdui-text-left"><a href="https://pianpian315.github.io/post/java-zhong-aqs-shi-xian-yuan-li">Java中AQS实现原理</a></div></div>
+                                        
+
+                                        
+                                        <div class="mdui-col"><div class="mdui-text-right "><a href="https://pianpian315.github.io/post/java-zhong-volatile-shi-xian-yuan-li">Java中volatile实现原理</a></div> </div>
+                                       
+                                      </div>
+                                   
+                                    <div class="mdui-divider mdui-m-t-2 mdui-m-b-2"></div>
+                                    
+                                     <script src="https://pianpian315.github.io/media/scripts/Valine.min.js"></script>
+ <div class="comment"></div>
+
+<script>
+      new Valine({
+            el: '.comment',
+
+
+
+            path: window.location.pathname,
+            pageSize: 30,
+            avatar:'mm', 
+       })
+    </script> 
+<script>
+    if(window.location.hash){
+        var checkExist = setInterval(function() {
+           if ($(window.location.hash).length) {
+              $('html, body').animate({scrollTop: $(window.location.hash).offset().top-90}, 1000);
+              clearInterval(checkExist);
+           }
+        }, 100);
+    }
+</script>
+                                </article>
+
+                                    
+                        </div>
+                      </div>
+    
+                
+
+              </div>
+                    <footer class="footer mdui-m-t-5 mdui-text-center">
+               <nav class="social-links">
+                      <ul>
+                      
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      </ul>
+                    </nav>
+                  <div class="copyright">
+                      <p>贵在坚持，欢迎监督 <br/> Theme <a href="https://github.com/alterfang/gridea-theme-song/">宋</a> by <a href="https://shanbu.fun/">山卜方</a> </p>
+                  </div>
+                  
+              </footer>
+    </body>
+</html>
