@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://pianpian315.github.io</id>
     <title>Pianpian&apos;s Blog</title>
-    <updated>2019-11-27T14:27:55.319Z</updated>
+    <updated>2019-11-29T16:54:44.171Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://pianpian315.github.io"/>
     <link rel="self" href="https://pianpian315.github.io/atom.xml"/>
@@ -10,6 +10,306 @@
     <logo>https://pianpian315.github.io/images/avatar.png</logo>
     <icon>https://pianpian315.github.io/favicon.ico</icon>
     <rights>All rights reserved 2019, Pianpian&apos;s Blog</rights>
+    <entry>
+        <title type="html"><![CDATA[ScheduledThreadPoolExecutor源码解析]]></title>
+        <id>https://pianpian315.github.io/post/scheduledthreadpoolexecutor-yuan-ma-jie-xi</id>
+        <link href="https://pianpian315.github.io/post/scheduledthreadpoolexecutor-yuan-ma-jie-xi">
+        </link>
+        <updated>2019-11-29T16:48:31.000Z</updated>
+        <content type="html"><![CDATA[<p>ScheduledThreadPoolExecutor继承了ThreadPoolExecutor和实现了ScheduledExecutorService接口。是用于执行延时任务和周期任务的线程池。</p>
+<p>主要有如下特点：</p>
+<p>（1）将任务封装成ScheduledFutureTask对象，ScheduledFutureTask基于相对时间，不受系统时间的改变所影响。</p>
+<p>（2）ScheduledFutureTask实现了java.lang.Comparable接口和java.util.concurrent.Delayed接口，它们分别有两个重要的方法：compareTo和getDelay。compareTo方法用于比较任务之间的优先级关系，如果距离下次执行的时间间隔较短，则优先级高；getDelay方法用于返回距离下次任务执行时间的时间间隔，这样ScheduledFutureTask就是一个可以排序的任务。</p>
+<pre><code>//还需要延迟多久
+public long getDelay(TimeUnit unit) {
+    return unit.convert(time - now(), NANOSECONDS);
+}
+//按预定的执行时间排序
+public int compareTo(Delayed other) {
+    if (other == this) // compare zero if same object
+        return 0;
+    if (other instanceof ScheduledFutureTask) {
+        ScheduledFutureTask&lt;?&gt; x = (ScheduledFutureTask&lt;?&gt;)other;
+        long diff = time - x.time;
+        if (diff &lt; 0)
+            return -1;
+        else if (diff &gt; 0)
+            return 1;
+        else if (sequenceNumber &lt; x.sequenceNumber)
+            return -1;
+        else
+            return 1;
+    }
+    long diff = getDelay(NANOSECONDS) - other.getDelay(NANOSECONDS);
+    return (diff &lt; 0) ? -1 : (diff &gt; 0) ? 1 : 0;
+}
+</code></pre>
+<p>（3）当有任务需要执行的时候，就会将任务加入到DelayedWorkQueue队列中，DelayedWorkQueue队列会根据compareTo的排序规则给队列元素排序，将执行时间早的任务放在队头，所以DelayedWorkQueue队列中的任务是一个按照执行时间从小到大排序的序列。</p>
+<p>具体我们可以看看DelayedWorkQueue的几个关键方法。</p>
+<h3 id="入队">入队</h3>
+<p>入队的任务是ScheduledFutureTask对象，会通过ScheduledFutureTask的compareTo进行任务的比较。最早执行的任务（getDelay最小的）是根节点queue[0]。</p>
+<pre><code>public boolean offer(Runnable x) {
+ if (x == null)
+     throw new NullPointerException();
+ RunnableScheduledFuture&lt;?&gt; e = (RunnableScheduledFuture&lt;?&gt;)x;
+ final ReentrantLock lock = this.lock;
+ lock.lock();
+ try {
+     int i = size;
+     //1. 判断队列容量是否大于等于数组容量，是则需要扩容
+     if (i &gt;= queue.length)
+        //2. 扩容，每次扩容50%
+         grow();
+    //3. 队列容量+1
+     size = i + 1;
+     //4. 队列中还没有元素
+     if (i == 0) {
+         //5. 加入第一个元素
+         queue[0] = e;
+         setIndex(e, 0);
+     } else {
+         //6. 队列中已经有元素就需要进行排序。
+         siftUp(i, e);
+     }
+     //7. 如果队头元素等于新的元素e，说明e执行时间比队列中其他元素早，唤醒消费线程，消费线程判断元素e是否达到执行时间。
+     if (queue[0] == e) {
+         leader = null;
+         available.signal();
+     }
+ } finally {
+     lock.unlock();
+ }
+ return true;
+}
+
+private void siftUp(int k, RunnableScheduledFuture&lt;?&gt; key) {
+    while (k &gt; 0) {
+        //父节点
+        int parent = (k - 1) &gt;&gt;&gt; 1;
+        RunnableScheduledFuture&lt;?&gt; e = queue[parent];
+        //如果比父节点大，确定位置
+        if (key.compareTo(e) &gt;= 0)
+            break;
+        //如果比父节点小，和父节点交换位置，再和父节点的父节点比较。
+        queue[k] = e;
+        setIndex(e, k);
+        k = parent;
+    }
+    queue[k] = key;
+    setIndex(key, k);
+}
+
+</code></pre>
+<h3 id="出队">出队</h3>
+<p>queue[0]元素是根节点。判断根节点是否到了执行时间。如果到达了执行时间就直接将任务返回，如果没有到达执行时间就进入等待状态，等到了时间就会将任务返回。</p>
+<pre><code>public RunnableScheduledFuture&lt;?&gt; take() throws InterruptedException {
+   final ReentrantLock lock = this.lock;
+   lock.lockInterruptibly();
+   try {
+       for (;;) {
+           //1. 获取队头节点
+           RunnableScheduledFuture&lt;?&gt; first = queue[0];
+           //2. 队头为空，没元素。进行等待。
+           if (first == null)
+               available.await();
+           else {
+               
+               long delay = first.getDelay(NANOSECONDS);
+               //3.判断队头节点是否到了执行时间
+               if (delay &lt;= 0)
+                   return finishPoll(first); //4. 返回队头节点，queue堆取掉头节点，进行调整
+
+               //4.队头节点没到执行时间，进入等待
+               first = null; 
+               
+               //这里是leader-follower模式的变种。为了减少不必要的等待。
+               //不是leader的线程会进行永久的等待直到被唤醒。leader线程只会等待到下个个延迟。
+               if (leader != null)
+                   available.await();
+               else {
+                   Thread thisThread = Thread.currentThread();
+                   leader = thisThread;
+                   try {
+                       available.awaitNanos(delay);
+                   } finally {
+                       if (leader == thisThread)
+                           leader = null;
+                   }
+               }
+           }
+       }
+   } finally {
+       if (leader == null &amp;&amp; queue[0] != null)
+           available.signal();
+       lock.unlock();
+   }
+}
+
+</code></pre>
+<p>下面具体来看看ScheduledThreadPoolExecutor任务执行流程</p>
+<h3 id="任务提交">任务提交</h3>
+<p>以scheduleAtFiexedRate为例子。</p>
+<pre><code>public ScheduledFuture&lt;?&gt; scheduleAtFixedRate(Runnable command,
+                                                 long initialDelay,
+                                                 long period,
+                                                 TimeUnit unit) {
+       if (command == null || unit == null)
+           throw new NullPointerException();
+       if (period &lt;= 0)
+           throw new IllegalArgumentException();
+       //1. 将任务封装成ScheduledFutureTask 
+       ScheduledFutureTask&lt;Void&gt; sft =
+           new ScheduledFutureTask&lt;Void&gt;(command,
+                                         null,
+                                         //triggerTime方法会算出触发的具体时间，now()+initalDelay
+                                         triggerTime(initialDelay, unit),
+                                         unit.toNanos(period));
+       RunnableScheduledFuture&lt;Void&gt; t = decorateTask(command, sft);
+       //2.用outerTask保存当前任务。用于周期执行时，再次将任务加入队列。
+       sft.outerTask = t;
+       //3.延迟执行，将任务加入到DelayedWorkQueue队列中。
+       delayedExecute(t);
+       return t;
+}
+</code></pre>
+<p>可以看到上面第三步的delayedExecute方法，就是将任务加入到DelayedWorkQueue队列中，然后启动工作线程进行任务执行的过程。</p>
+<pre><code>private void delayedExecute(RunnableScheduledFuture&lt;?&gt; task) {
+    // 如果当前线程池处于SHUTDOWN状态，执行reject策略
+    if (isShutdown())
+        reject(task);
+    else {
+        // 否则，将task添加到task阻塞队列中
+        super.getQueue().add(task);
+        // 检查当前状态是否可以运行
+        // 这里做了特殊检验：在SHUTDOWN状态,如果用户没有要求在SHUTDWON状态还可以接收新的task，那么下面会删除task
+        if (isShutdown() &amp;&amp;
+            !canRunInCurrentRunState(task.isPeriodic()) &amp;&amp;
+            remove(task))
+            task.cancel(false);
+        else
+            // 调用ThreadPoolExecutor的ensurePrestart()执行task
+            ensurePrestart();
+    }
+}
+</code></pre>
+<p>上面的getQueue().add(task)就是将任何加入到DelayedWorkQueue队列中，调用的是DelayedWorkQueue的add方法，下面具体看看实现。</p>
+<pre><code>public boolean add(E e) {
+    return offer(e);
+}
+</code></pre>
+<p>可以看到最终调用的是offer函数，这个就是前面分析的DelayedWorkQueue的offer入队操作。</p>
+<h3 id="任务执行">任务执行</h3>
+<p>执行任务时调用ThreadPoolExecutor的runWorker方法。</p>
+<pre><code>final void runWorker(Worker w) {
+   Thread wt = Thread.currentThread();
+   Runnable task = w.firstTask;
+   w.firstTask = null;
+   w.unlock(); 
+   boolean completedAbruptly = true;
+   try {
+       //1.通过getTask方法从DelayedWorkQueue队列中拿出一个任务。
+       //没有达到执行时间的任务时，会阻塞
+       while (task != null || (task = getTask()) != null) {
+           w.lock();
+           if ((runStateAtLeast(ctl.get(), STOP) ||
+                (Thread.interrupted() &amp;&amp;
+                 runStateAtLeast(ctl.get(), STOP))) &amp;&amp;
+               !wt.isInterrupted())
+               wt.interrupt();
+           try {
+               beforeExecute(wt, task);
+               Throwable thrown = null;
+               try {
+               //2. 调用任务的run方法
+                   task.run();
+               } catch (RuntimeException x) {
+                   thrown = x; throw x;
+               } catch (Error x) {
+                   thrown = x; throw x;
+               } catch (Throwable x) {
+                   thrown = x; throw new Error(x);
+               } finally {
+                   afterExecute(task, thrown);
+               }
+           } finally {
+               task = null;
+               w.completedTasks++;
+               w.unlock();
+           }
+       }
+       completedAbruptly = false;
+   } finally {
+       processWorkerExit(w, completedAbruptly);
+   }
+}
+</code></pre>
+<p>可以看到上面的操作主要分为两步：</p>
+<p>（1）从DelayedWorkQueue队列中取任务，对应的就是getTask方法，getTask实现代码如下：</p>
+<pre><code>private Runnable getTask() {
+    boolean timedOut = false; // Did the last poll() time out?
+
+    for (;;) {
+        int c = ctl.get();
+        int rs = runStateOf(c);
+
+        // Check if queue empty only if necessary.
+        if (rs &gt;= SHUTDOWN &amp;&amp; (rs &gt;= STOP || workQueue.isEmpty())) {
+            decrementWorkerCount();
+            return null;
+        }
+
+        int wc = workerCountOf(c);
+
+        // Are workers subject to culling?
+        boolean timed = allowCoreThreadTimeOut || wc &gt; corePoolSize;
+
+        if ((wc &gt; maximumPoolSize || (timed &amp;&amp; timedOut))
+            &amp;&amp; (wc &gt; 1 || workQueue.isEmpty())) {
+            if (compareAndDecrementWorkerCount(c))
+                return null;
+            continue;
+        }
+
+        try {
+	    // 从DelayedWorkQueue队列中取出任务
+            Runnable r = timed ?
+                workQueue.poll(keepAliveTime, TimeUnit.NANOSECONDS) :
+                workQueue.take();
+            if (r != null)
+                return r;
+            timedOut = true;
+        } catch (InterruptedException retry) {
+            timedOut = false;
+        }
+    }
+}
+
+</code></pre>
+<p>从上面的注释可以看到，最终调用的就是上面我们分析过的DelayedWorkQueue的take方法。</p>
+<p>（2）进行任务的执行</p>
+<pre><code>public void run() {
+    //是否周期任务，period&gt;0
+    boolean periodic = isPeriodic();
+    if (!canRunInCurrentRunState(periodic))
+        cancel(false);
+    else if (!periodic)
+        ScheduledFutureTask.super.run();
+    //执行任务并重置任务状态
+    else if (ScheduledFutureTask.super.runAndReset()) {
+        //周期任务，设置下次执行的时间
+        setNextRunTime();
+        //再将outerTask（任务提交时将自身赋值给了outerTask）加入任务队列。
+        reExecutePeriodic(outerTask);
+    }
+}
+
+</code></pre>
+<h3 id="参考文章">参考文章：</h3>
+<p>https://www.jianshu.com/p/b52211d809df<br>
+https://wujiazhen2.github.io/2018/09/25/ScheduledThreadPoolExecutor%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/<br>
+https://blog.csdn.net/u010014658/article/details/79219229</p>
+]]></content>
+    </entry>
     <entry>
         <title type="html"><![CDATA[Java中AQS实现原理]]></title>
         <id>https://pianpian315.github.io/post/java-zhong-aqs-shi-xian-yuan-li</id>
@@ -1265,23 +1565,6 @@ https://hunterzhao.io/post/2018/01/29/compile-openjdk10-source-code-on-mac/</p>
 <p>项目组内所有成员每周都需要对自己工作内容进行总结并且写成周报，每周会有一次周会来进行工作内容汇总和讨论。</p>
 <h4 id="4-技术分享">4、技术分享</h4>
 <p>每周进行一次技术分享，由组内成员自发报名，分享内容包括技术调研，工作技术输出等等。</p>
-]]></content>
-    </entry>
-    <entry>
-        <title type="html"><![CDATA[项目分支管理]]></title>
-        <id>https://pianpian315.github.io/post/qian-tan-xiang-mu-fen-zhi-guan-li</id>
-        <link href="https://pianpian315.github.io/post/qian-tan-xiang-mu-fen-zhi-guan-li">
-        </link>
-        <updated>2019-09-18T13:55:17.000Z</updated>
-        <content type="html"><![CDATA[<p>分支的管理对于项目的开发非常重要，下面结合自身项目经验说说分支的管理。</p>
-<p>项目的代码分支主要有以下几条线：</p>
-<p>(1) feature-v*：feature分支，用于各版本的feature迭代开发</p>
-<p>(2) apk-dev：开发分支，用于编译线下测试版本（debug版本）</p>
-<p>(3) apk-rel：发布分支，用于编译线上发布版本（release版本）</p>
-<p>每一个版本建立一个专门的feature分支（比如，feature-v1, feature-v2, feature-v3......）。在一个版本开发完毕后，把feature分支merge到apk-dev分支；下一个版本以最新的apk-dev为base建立新的feature分支；apk-dev分支FC测试通过后将apk-dev分支merge到apk-rel分支上，然后apk-rel分支RC测试通过后即可进行上线发布。</p>
-<p>feature-v* --&gt; apk-dev --&gt; apk-rel</p>
-<p>另外附上一个参考链接：<br>
-http://www.ruanyifeng.com/blog/2012/07/git.html</p>
 ]]></content>
     </entry>
 </feed>
