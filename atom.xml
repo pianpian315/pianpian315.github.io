@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://pianpian315.github.io</id>
     <title>Pianpian&apos;s Blog</title>
-    <updated>2019-11-29T16:54:44.171Z</updated>
+    <updated>2019-12-01T15:43:40.704Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://pianpian315.github.io"/>
     <link rel="self" href="https://pianpian315.github.io/atom.xml"/>
@@ -10,6 +10,256 @@
     <logo>https://pianpian315.github.io/images/avatar.png</logo>
     <icon>https://pianpian315.github.io/favicon.ico</icon>
     <rights>All rights reserved 2019, Pianpian&apos;s Blog</rights>
+    <entry>
+        <title type="html"><![CDATA[AQS 之 Condition 源码解析]]></title>
+        <id>https://pianpian315.github.io/post/aqs-zhi-condition-yuan-ma-jie-xi</id>
+        <link href="https://pianpian315.github.io/post/aqs-zhi-condition-yuan-ma-jie-xi">
+        </link>
+        <updated>2019-12-01T14:54:22.000Z</updated>
+        <content type="html"><![CDATA[<p>我们知道Java 中任何一个对象都拥有一组监视器方法，主要包括 wait()、wait(long timeout)、notify() 以及 notifyAll() 方法。而且这些方法使用时有个前提，就是必须先获得对象的监视器，也就是调用代码必须包含在 synchronized 语句中。而 Condition 是与 Lock 接口配合使用，使用 Condition 接口方法前必须先获得锁。</p>
+<p>Condition 接口主要方法如下：</p>
+<pre><code>public interface Condition {
+
+    //在条件变量上等待，直至signal或者被interrupt
+    void await() throws InterruptedException;
+
+    //在条件变量上等待，直至signal，并且无视interrupt，这一点就比基于Object的wait更灵活
+    void awaitUninterruptibly();
+
+    //在条件变量上等待，直至signal或者被interrupt或者直至超时
+    long awaitNanos(long nanosTimeout) throws InterruptedException;
+
+    //在条件变量上等待，直至signal或者被interrupt或直至超时
+    boolean await(long time, TimeUnit unit) throws InterruptedException;
+
+    //在条件变量上等待，直至signal或者被interrupt或直至超时
+    boolean awaitUntil(Date deadline) throws InterruptedException;
+
+    //唤醒某个在条件变量上阻塞的线程，类似于notify
+    void signal();
+
+    //唤醒某个在条件变量上阻塞的线程，类似于notifyAll
+    void signalAll();
+}
+</code></pre>
+<p>Condition 对象是由 Lock 对象创建。</p>
+<pre><code>Condition newCondition();
+</code></pre>
+<p>Condition只是个接口，主要实现类为 AbstractQueuedSynchronizer 中的内部类 ConditionObject。</p>
+<pre><code>public class ConditionObject implements Condition, java.io.Serializable {
+    /** First node of condition queue. */
+    private transient Node firstWaiter;
+    /** Last node of condition queue. */
+    private transient Node lastWaiter;
+}
+</code></pre>
+<p>每个 Condition 对象都包含着一个 FIFO 阻塞队列，ConditionObject 类中 firstWaiter、lastWaiter分别指向等待队列的首节点、尾节点。节点之间通过 nextWaiter 连接起来。</p>
+<p>在AQS框架中，ConditionObject的实现需要这两个队列，一个就是上面看到的阻塞队列，阻塞队列(可以称为condition queue)是ConditionObject自身维护的，另一个队列就是同步队列，同步队列直接依赖于AQS的sync queue，因此ConditionObject作为内部类存在于AQS中，以便于ConditionObject可以直接利用AQS实现的sync queue。</p>
+<p>下面说说两个队列是怎样工作的：<br>
+（1）当调用await方法的时候，会将当前的线程添加到阻塞队列当中。</p>
+<p>在ReentranLock中我们可以看到newCondition的方法实现。</p>
+<pre><code>final ConditionObject newCondition() {
+    return new ConditionObject();
+}
+</code></pre>
+<p>下面我们具体来看看ConditionObject的await方法方法实现。</p>
+<pre><code>public final void await() throws InterruptedException {
+    // 响应中断，直接抛异常
+    if (Thread.interrupted())
+        throw new InterruptedException();
+    // 在等待队列尾部添加节点
+    Node node = addConditionWaiter();
+    // 释放同步状态
+    int savedState = fullyRelease(node);
+    int interruptMode = 0;
+    // 是否在同步队列中，signal会把当前节点从等待队列转移到同步队列
+    while (!isOnSyncQueue(node)) {
+        // 阻塞当前线程
+        LockSupport.park(this);
+        // 当前线程从 LockSupport.park(this) 返回
+        // 1.signal 返回 2.被中断返回
+        if ((interruptMode = checkInterruptWhileWaiting(node)) != 0)
+            // 如果是因为中断返回，则直接结束循环
+            break;
+    }
+    // 重新获取同步状态
+    // 如果在获取同步状态的时候被中断，则要重新中断
+    if (acquireQueued(node, savedState) &amp;&amp; interruptMode != THROW_IE)
+        interruptMode = REINTERRUPT;
+    
+    // 清除掉等待队列中已取消的节点
+    if (node.nextWaiter != null) // clean up if cancelled
+        unlinkCancelledWaiters();
+    
+    // 针对不同的中断模式做出相对应的操作
+    if (interruptMode != 0)
+        reportInterruptAfterWait(interruptMode);
+}
+</code></pre>
+<p>await()方法的大体逻辑：添加节点到等待队列的尾部，释放同步状态（锁），然后阻塞当前线程。当线程被唤醒后，重新获取同步状态（锁）。</p>
+<p>下面看看添加节点到等待队列尾部的过程。</p>
+<pre><code>private Node addConditionWaiter() {
+    Node t = lastWaiter;
+    // 如果尾节点已经被取消，则从等待队列中移除
+    if (t != null &amp;&amp; t.waitStatus != Node.CONDITION) {
+        unlinkCancelledWaiters();
+        t = lastWaiter;
+    }
+    // 以当前线程构建 Node
+    Node node = new Node(Thread.currentThread(), Node.CONDITION);
+    if (t == null)
+        firstWaiter = node;
+    else
+        // 当前尾节点的下一个节点指向新构建的节点
+        t.nextWaiter = node;
+    // 指定当前节点为尾节点
+    lastWaiter = node;
+    return node;
+}
+</code></pre>
+<p>（2）当调用signal方法的时候，会将当前线程中阻塞队列中移动到同步队列当中。</p>
+<pre><code>/**
+ * Moves the longest-waiting thread, if one exists, from the
+ * wait queue for this condition to the wait queue for the
+ * owning lock.
+ *
+ * 把等待队列中等待时间最长的节点（firstWaiter）移动到同步队列中去
+ */
+public final void signal() {
+    // 调用该方法前必须先获得锁
+    if (!isHeldExclusively())
+        throw new IllegalMonitorStateException();
+    Node first = firstWaiter;
+    if (first != null)
+        doSignal(first);
+}
+
+/**
+ * 转移等待队列中第一个节点到同步队列中
+ * 如果移动失败（被取消），则移动下一个节点（下一个节点不为空）
+ * 如果移动成功，退出循环
+ */
+private void doSignal(Node first) {
+    do {
+        if ( (firstWaiter = first.nextWaiter) == null)
+            lastWaiter = null;
+        first.nextWaiter = null;
+    } while (!transferForSignal(first) &amp;&amp;
+             (first = firstWaiter) != null);
+}
+
+/**
+ * Transfers a node from a condition queue onto sync queue.
+ * Returns true if successful.
+ * @return true if successfully transferred (else the node was
+ * cancelled before signal).
+ *
+ * 把节点从等待队列中转移到同步队列，转移成功返回 true
+ * 失败则说明节点在 signal 前已经被取消
+ */
+final boolean transferForSignal(Node node) {
+    // 更改状态失败，说明节点已经被取消
+    if (!compareAndSetWaitStatus(node, Node.CONDITION, 0))
+        return false;
+    
+    // 加到同步队列，p 是当前节点的前驱结点
+    Node p = enq(node);
+    int ws = p.waitStatus;
+    // 前驱结点被取消，或者更改前驱结点状态为 signal 失败
+    // 说明前驱节点已被取消，则直接唤醒当前线程
+    if (ws &gt; 0 || !compareAndSetWaitStatus(p, ws, Node.SIGNAL))
+        LockSupport.unpark(node.thread);
+    return true;
+}
+
+</code></pre>
+<p>signal() 方法的作用其实就是把等待队列中第一个非取消节点转移到 AQS 的同步队列尾部。</p>
+<p>（3）在await方法中会通过isOnSyncQueue方法或者当前线程是否中断来决定是否退出阻塞，也就是结束while循环。</p>
+<p>下面重点看看Condition#await() 方法中的部分代码。</p>
+<pre><code>// 如果节点已在同步队列，跳出循环
+while (!isOnSyncQueue(node)) {
+    LockSupport.park(this);
+    // 如果线程中断，也会跳出循环
+    if ((interruptMode = checkInterruptWhileWaiting(node)) != 0)
+        break;
+}
+// 接着获取同步状态
+if (acquireQueued(node, savedState) &amp;&amp; interruptMode != THROW_IE)
+    interruptMode = REINTERRUPT;
+</code></pre>
+<p>从上面看到：<br>
+1）通过isOnSyncQueue来判断当前线程释放在同步队列当中。</p>
+<pre><code>final boolean isOnSyncQueue(Node node) {
+    // 节点状态为 Node.CONDITION
+    // 节点的 prev 节点为空（同步队列中节点的 prev 节点不会为空）
+    if (node.waitStatus == Node.CONDITION || node.prev == null)
+        return false;
+    
+    // 节点的 next 节点不为空（next 属性只会存在于同步队列，等待队列只有 nextWaiter）
+    if (node.next != null) // If has successor, it must be on queue
+        return true;
+        
+    // 上面条件都不满足，则从尾部遍历同步队列，查找指定节点
+    return findNodeFromTail(node);
+}
+</code></pre>
+<p>如果发现节点位于同步队列，说明另一个线程执行了signal/signalAll，节点从阻塞队列移动到同步队列，此时再次排队竞争锁，如果位于阻塞队列中，那么说明条件还未成立，需要继续阻塞自己。</p>
+<p>2）通过checkInterruptWhileWaiting方法判断当前线程是否在阻塞的过程中被中断</p>
+<pre><code>/**
+ * Checks for interrupt, returning THROW_IE if interrupted
+ * before signalled, REINTERRUPT if after signalled, or
+ * 0 if not interrupted.
+ *
+ * 检查中断
+ * 如果在被 signal 之前被中断，则返回 THROW_IE（直接抛异常）
+ * 如果在被 signal 之后被中断，则返回 REINTERRUPT（再次中断）
+ * 否则返回 0，表示没有被中断
+ */
+private int checkInterruptWhileWaiting(Node node) {
+    return Thread.interrupted() ?
+        (transferAfterCancelledWait(node) ? THROW_IE : REINTERRUPT) :
+        0;
+}
+
+/**
+ * Transfers node, if necessary, to sync queue after a cancelled
+ * wait. Returns true if thread was cancelled before being
+ * signalled.
+ * 
+ * 等待队列节点被取消（中断）后，尝试“转移”到同步队列
+ */
+final boolean transferAfterCancelledWait(Node node) {
+    // 修改节点状态为初始状态
+    // 修改成功，说明节点还没被 signal（signal 前中断）
+    // 因为 signal 也会把节点状态修改为初始状态，如果已经被 signal，这里 cas 会失败
+    if (compareAndSetWaitStatus(node, Node.CONDITION, 0)) {
+        // 加入到同步队列尾部
+        enq(node);
+        return true;
+    }
+    /*
+     * If we lost out to a signal(), then we can't proceed
+     * until it finishes its enq().  Cancelling during an
+     * incomplete transfer is both rare and transient, so just
+     * spin.
+     *
+     * 代码执行到这里，说明当前线程正在或者已经被 signal（signal 后中断）
+     * signal() 方法会把当前节点从等待队列“转移”到同步队列，即执行 enq() 方法，
+     * 在完成“转移”之前，这里代码不能继续往下执行，所以做自旋操作就够了
+     * 当节点成功“转移”到同步队列，isOnSyncQueue(node) 返回 true，则退出 while 循环
+     *
+     */
+    while (!isOnSyncQueue(node))
+        Thread.yield();
+    return false;
+}
+</code></pre>
+<h3 id="参考文章">参考文章：</h3>
+<p>https://somelogs.com/article/condition<br>
+https://liuyehcf.github.io/2017/07/02/Java-concurrent-AQS-ConditionObject-%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90/<br>
+https://zhuanlan.zhihu.com/p/39594030</p>
+]]></content>
+    </entry>
     <entry>
         <title type="html"><![CDATA[ScheduledThreadPoolExecutor源码解析]]></title>
         <id>https://pianpian315.github.io/post/scheduledthreadpoolexecutor-yuan-ma-jie-xi</id>
@@ -1548,23 +1798,6 @@ jdk是我们研究源码经常会用到的，里面包含：<br>
 https://www.jianshu.com/p/fd26b158dede<br>
 https://adoptopenjdk.gitbooks.io/adoptopenjdk-getting-started-kit/en/binaries/build_openjdk_8.html<br>
 https://hunterzhao.io/post/2018/01/29/compile-openjdk10-source-code-on-mac/</p>
-]]></content>
-    </entry>
-    <entry>
-        <title type="html"><![CDATA[项目团队管理]]></title>
-        <id>https://pianpian315.github.io/post/qian-xi-xiang-mu-tuan-dui-guan-li</id>
-        <link href="https://pianpian315.github.io/post/qian-xi-xiang-mu-tuan-dui-guan-li">
-        </link>
-        <updated>2019-09-19T15:58:25.000Z</updated>
-        <content type="html"><![CDATA[<p>下面结合自身的项目经验，说说项目团队管理。</p>
-<h4 id="1-新人分配导师">1、新人分配导师</h4>
-<p>为新人工分配一个导师，由导师带领新人熟悉业务、工作流程以及公司环境。</p>
-<h4 id="2-新人串讲">2、新人串讲</h4>
-<p>新人进入团队之后，需要对自己所负责的模块进行串讲，并且由组内其他成为来进行提问打分，不通过的话就继续熟悉项目，然后继续串讲，直到通过为止。</p>
-<h4 id="3-周报周会">3、周报（周会）</h4>
-<p>项目组内所有成员每周都需要对自己工作内容进行总结并且写成周报，每周会有一次周会来进行工作内容汇总和讨论。</p>
-<h4 id="4-技术分享">4、技术分享</h4>
-<p>每周进行一次技术分享，由组内成员自发报名，分享内容包括技术调研，工作技术输出等等。</p>
 ]]></content>
     </entry>
 </feed>
