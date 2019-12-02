@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://pianpian315.github.io</id>
     <title>Pianpian&apos;s Blog</title>
-    <updated>2019-12-01T15:43:40.704Z</updated>
+    <updated>2019-12-02T13:45:23.414Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://pianpian315.github.io"/>
     <link rel="self" href="https://pianpian315.github.io/atom.xml"/>
@@ -10,6 +10,80 @@
     <logo>https://pianpian315.github.io/images/avatar.png</logo>
     <icon>https://pianpian315.github.io/favicon.ico</icon>
     <rights>All rights reserved 2019, Pianpian&apos;s Blog</rights>
+    <entry>
+        <title type="html"><![CDATA[Java中Thread线程的中断]]></title>
+        <id>https://pianpian315.github.io/post/java-zhong-thread-xian-cheng-de-zhong-duan</id>
+        <link href="https://pianpian315.github.io/post/java-zhong-thread-xian-cheng-de-zhong-duan">
+        </link>
+        <updated>2019-12-02T13:41:49.000Z</updated>
+        <content type="html"><![CDATA[<h3 id="线程的中断">线程的中断</h3>
+<p>在Java中，如果我们想要中断一个线程，需要调用Thread的interrupt方法。但是我们需要知道的是，中断一个线程并不是让一个线程停止运行，只是将线程的中断标志设为true, 或者在某些特定情况下抛出一个InterruptedException，并不会直接将一个线程停掉，也就是说，无论是设置中断标志还是抛出InterruptedException，它们都是给当前线程的建议，当前线程可以选择采纳或者不采纳，它们并不会影响当前线程的执行。</p>
+<p>所以，中断操作大部分操作无外乎以下两点:<br>
+（1）设置或者清除中断标志位<br>
+（2）抛出InterruptedException</p>
+<p>如果线程因为以下方法的调用而处于阻塞中，调用了interrupt方法之后，线程的中断标志会被清除，并且收到一个InterruptedException:</p>
+<ul>
+<li>Object的方法</li>
+</ul>
+<pre><code>wait()
+wait(long)
+wait(long, int)
+</code></pre>
+<ul>
+<li>Thread的方法</li>
+</ul>
+<pre><code>join()
+join(long)
+join(long, int)
+sleep(long)
+sleep(long, int)
+</code></pre>
+<p>这里需要强调的是上面这些方法在抛出InterruptedException异常后，会同时清除中断标识位，所以我们如果想要知道线程是否中断，就只能通过异常来知晓，而不能通过标识位来获取。</p>
+<h3 id="如何终止一个线程">如何终止一个线程</h3>
+<p>（1）终止处于阻塞状态的线程</p>
+<p>一个线程因为调用wait,sleep,join方法而进入阻塞状态后，若在这时中断这个线程，则这些方法将会抛出InterruptedException异常，我们可以利用这个异常，使线程跳出阻塞状态，从而终止线程。</p>
+<pre><code>@Override
+public void run() {
+    while(true) {
+        try {
+            // do some task
+            // blocked by calling wait/sleep/join
+        } catch (InterruptedException ie) {  
+            // 如果该线程被中断，则会抛出InterruptedException异常
+            // 我们通过捕获这个异常，使得线程从block状态退出
+            break; // 这里使用break, 可以使我们在线程中断后退出死循环，从而终止线程。
+        }
+    }
+}
+</code></pre>
+<p>（2）终止处于运行状态的线程</p>
+<p>与中断一个处于阻塞状态所不同的是，中断一个处于运行状态的线程只会将该线程的中断标志位设为true, 而并不会抛出InterruptedException异常，为了能在运行过程中感知到线程已经被中断了，我们只能通过不断地检查中断标志位来实现:</p>
+<pre><code>@Override
+public void run() {
+    while (!isInterrupted()) {
+        // do some task...
+    }
+}
+</code></pre>
+<p>综合上面两点，我们来看看怎样终止一个处于阻塞状态或运行状态的线程，也就是将这两种方法结合起来。</p>
+<pre><code>@Override
+public void run() {
+    try {
+        // 1. isInterrupted() 用于终止一个正在运行的线程。
+        while (!isInterrupted()) {
+            // 执行任务...
+        }
+    } catch (InterruptedException ie) {  
+        // 2. InterruptedException异常用于终止一个处于阻塞状态的线程
+    }
+}
+</code></pre>
+<p>这里需要再次强调的是，wait,sleep,join等方法抛出InterruptedException有一个副作用: 清除当前的中断标志位，所以不要在异常抛出后不做任何处理，而寄望于用isInterrupted()方法来判断，因为中标志位已经被重置了。</p>
+<h3 id="参考文章">参考文章：</h3>
+<p>https://segmentfault.com/a/1190000016083002<br>
+http://www.fanyilun.me/2016/11/19/Thread.interrupt()%E7%9B%B8%E5%85%B3%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/</p>
+]]></content>
+    </entry>
     <entry>
         <title type="html"><![CDATA[AQS 之 Condition 源码解析]]></title>
         <id>https://pianpian315.github.io/post/aqs-zhi-condition-yuan-ma-jie-xi</id>
@@ -1743,61 +1817,6 @@ I/flutter: [PointerData(x: 596.0, y: 572.0)]
 <p>https://juejin.im/post/5c7cd2f4e51d4537b05b0974<br>
 https://mp.weixin.qq.com/s/ncViI0KGikPUIZ7BlEHGOA<br>
 https://book.flutterchina.club/chapter14/flutter_app_startup.html</p>
-]]></content>
-    </entry>
-    <entry>
-        <title type="html"><![CDATA[OpenJDK源码下载]]></title>
-        <id>https://pianpian315.github.io/post/openjdk-yuan-ma-xia-zai</id>
-        <link href="https://pianpian315.github.io/post/openjdk-yuan-ma-xia-zai">
-        </link>
-        <updated>2019-09-29T01:25:58.000Z</updated>
-        <content type="html"><![CDATA[<h2 id="一-源码下载">一、源码下载</h2>
-<h3 id="1-安装mercurial版本控制">1、安装mercurial版本控制</h3>
-<p>在MAC系统中，使用下面命令</p>
-<pre><code>$ brew install mercurial
-</code></pre>
-<p>在Linux系统中，使用下面命令</p>
-<pre><code>$ sudo apt-get install mercurial
-</code></pre>
-<p>mercurial安装完毕后，可以通过hg命令来下载源码，使用方式和git、svn类似。</p>
-<h3 id="2-下载openjdk源码">2、下载OpenJDK源码</h3>
-<pre><code>$ hg clone http://hg.openjdk.java.net/jdk8/jdk8 jdk8
-</code></pre>
-<p>你可以看到clone下来的代码很少，那是因为OpenJDK将不同类型的source文件放在了不同的子仓库，你可以进入OpenJDK的目录，执行get_source.sh文件即可。</p>
-<pre><code>$ cd jdk8
-$ chmod +x get_source.sh
-$ ./get_source.sh
-</code></pre>
-<h3 id="3-配置jdk可选">3、配置JDK（可选）</h3>
-<pre><code>$ bash configure
-</code></pre>
-<h3 id="4-构建编译">4、构建编译</h3>
-<pre><code>$ make clean images
-</code></pre>
-<p>或者</p>
-<pre><code>make clean images LOG=debug // to display DEBUG information
-</code></pre>
-<p>你也可以单独对某个模块进行编译构建</p>
-<pre><code>$ make jdk
-$ make hotspot
-$ make test
-</code></pre>
-<h2 id="二-源码基本说明">二、源码基本说明</h2>
-<p>— corba：不流行的多语言、分布式通讯接口<br>
-— hotspot：Java 虚拟机<br>
-— jaxp：XML 处理<br>
-— jaxws：一组 XML web services 的 Java API<br>
-— langtools：Java 语言工具<br>
-— nashorn：JVM 上的 JavaScript 运行时<br>
-— jdk：java 开发工具包<br>
-jdk是我们研究源码经常会用到的，里面包含：<br>
-— 针对操作系统的部分<br>
-— share：与平台无关的实现</p>
-<h3 id="参考文章">参考文章：</h3>
-<p>https://download.java.net/openjdk/jdk8<br>
-https://www.jianshu.com/p/fd26b158dede<br>
-https://adoptopenjdk.gitbooks.io/adoptopenjdk-getting-started-kit/en/binaries/build_openjdk_8.html<br>
-https://hunterzhao.io/post/2018/01/29/compile-openjdk10-source-code-on-mac/</p>
 ]]></content>
     </entry>
 </feed>
