@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html>
+        <head>
+        <meta name="viewport" content="width=device-width,minimum-scale=1,maximum-scale=1,initial-scale=1,user-scalable=no" />
+        <meta charset="utf-8">
+        <title>Git原理解析 | Pianpian&#39;s Blog</title>
+        <link rel="stylesheet" href="https://pianpian315.github.io/styles/main.css">
+        <link rel="stylesheet" href="https://at.alicdn.com/t/font_1423691_1fcfxbwa79n.css">
+        <link href="https://cdn.bootcss.com/animate.css/3.7.2/animate.min.css" rel="stylesheet">
+         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+        <script src="https://cdn.staticfile.org/jquery/3.4.1/jquery.min.js"></script>
+         <script src="https://cdn.bootcss.com/highlight.js/9.15.10/highlight.min.js"></script>
+         <script >hljs.initHighlightingOnLoad();</script>
+
+    </head>
+    <body>
+              <header class="header mdui-m-b-5">      
+            <div class="container  ">
+                <div class="index-title animated fadeInDown mdui-text-center mdui-text-color-white mdui-m-b-2" style="animation-delay: 0.2s"><a href="https://pianpian315.github.io">Pianpian&#39;s Blog</a></div>
+                <div class="mdui-text-color-white animated fadeInDown mdui-text-center  mdui-m-b-3" style="animation-delay: 0.4s">不积跬步，无以至千里</div>
+           
+            <nav id="nav" class="mdui-text-center animated fadeInDown" style="animation-delay: 0.6s">
+                   
+                            <li><a href="/">首页</a>
+                                <span class="nav-style top"></span>
+                                <span class="nav-style bottom"></span>
+                                <span class="nav-style left"></span>
+                                <span class="nav-style right"></span>
+                                </li>
+                    
+                            <li><a href="/archives">归档</a>
+                                <span class="nav-style top"></span>
+                                <span class="nav-style bottom"></span>
+                                <span class="nav-style left"></span>
+                                <span class="nav-style right"></span>
+                                </li>
+                    
+                            <li><a href="/tags">标签</a>
+                                <span class="nav-style top"></span>
+                                <span class="nav-style bottom"></span>
+                                <span class="nav-style left"></span>
+                                <span class="nav-style right"></span>
+                                </li>
+                    
+                            <li><a href="/post/books">书单</a>
+                                <span class="nav-style top"></span>
+                                <span class="nav-style bottom"></span>
+                                <span class="nav-style left"></span>
+                                <span class="nav-style right"></span>
+                                </li>
+                    
+                            <li><a href="/post/about">关于</a>
+                                <span class="nav-style top"></span>
+                                <span class="nav-style bottom"></span>
+                                <span class="nav-style left"></span>
+                                <span class="nav-style right"></span>
+                                </li>
+                    
+                  </nav>
+                </div>
+        </header>
+        <div class="mdui-container ">
+                <div class="mdui-row">
+                        <div class="mdui-col-md-8 mdui-col-offset-md-2 ">
+                                <article class="mdui-p-a-2 post animated fadeIn" style="animation-delay: 0.8s;animation-duration: 2s">
+                                    <div class="post-title  mdui-m-b-1">Git原理解析</div>
+                                    <div class="mdui-typo-body-2 mdui-m-b-2" datetime="2019-12-14 15:54:42">2019-12-14 / 9 min read</div>
+                                    <div class="mdui-m-b-2 mdui-typo post-neirong"><p>Git是一个内容寻址文件系统。其核心部分是一个简单的键值对数据库，可以向该数据库插入任意类型的内容，它会返回一个键值，通过该键值可以在任意时刻再次检索该内容，这些数据主要存放在.git/.git/objects目录下。</p>
+<p>Git的这种数据存储方式类似于 UNIX 文件系统的方式存储内容，但作了些许简化。 所有内容均以树对象和数据对象的形式存储，其中树对象对应了 UNIX 中的目录项，数据对象则大致上对应了 inodes 或文件内容。</p>
+<p>除了上面说到的数据对象和树对象外，git还有另外两个基本对象类型，总共是四种基本对象类型。</p>
+<ul>
+<li>
+<p>blobs<br>
+这个就是数据对象，每个blob代表一个（版本的）文件，blob只包含文件的数据，而忽略文件的其他元数据，如名字、路径、格式等。</p>
+</li>
+<li>
+<p>trees<br>
+这个就是树对象，每个tree代表了一个目录的信息，包含了此目录下的blobs，子目录（对应于子trees），文件名、路径等元数据。因此，对于有子目录的目录，git相当于存储了嵌套的trees。</p>
+</li>
+<li>
+<p>commits<br>
+每个commit记录了提交一个更新的所有元数据，如指向的tree，父commit，作者、提交者、提交日期、提交日志等。每次提交都指向一个tree对象，记录了当次提交时的目录信息。一个commit可以有多个（至少一个）父commits。</p>
+</li>
+<li>
+<p>tags<br>
+tag用于给某个上述类型的对象指配一个便于开发者记忆的名字, 通常用于某次commit。</p>
+</li>
+</ul>
+<p>下面我们来进行一下讲解和演示</p>
+<pre><code>$ git init test
+Initialized empty Git repository in /tmp/test/.git/
+</code></pre>
+<p>上面init命令就是在test目录下创建一个git仓库。</p>
+<pre><code>$ cd test
+$ find .git/objects
+.git/objects
+.git/objects/info
+.git/objects/pack
+$ find .git/objects -type f
+</code></pre>
+<p>可以看到 Git 对 objects 目录进行了初始化，并创建了 pack 和 info 子目录，但均为空，因为当前还没有数据。</p>
+<h3 id="数据对象blob">数据对象（blob）</h3>
+<ul>
+<li>向git数据库进行blob对象写入操作</li>
+</ul>
+<pre><code>$ echo 'version 1' &gt; test.txt
+$ git hash-object -w test.txt
+83baae61804e65cc73a7201a7252750c76066a30
+</code></pre>
+<p>命令执行后，会返回个长度为40位的hash值，这个hash值是将待存储的数据外加一个头部信息一起做SHA-1校验运算而得的校验和。在git数据库中，它就是我们上面说的键值（key）。这个时候，'version 1'就写入到了git数据库中，它存放在.git/objects目录下，我们可以具体查看一下。</p>
+<pre><code>$ find .git/objects/ -type f
+.git/objects/83/baae61804e65cc73a7201a7252750c76066a30
+</code></pre>
+<p>可以看出，Git对象的40位hash分为两部分：头两位作为文件夹，后38位作为对象文件名。所以一个Git对象的存储路径规则为：</p>
+<pre><code>.git/objects/hash[0, 2]/hash[2, 40]
+</code></pre>
+<ul>
+<li>对blob对象进行查询操作</li>
+</ul>
+<p>我们也可以通过git cat-file这个git底层命令查看数据库中某一键值对应的数据。</p>
+<pre><code>$ git cat-file -p 83baa
+version 1
+</code></pre>
+<p>其中，-p选项用于查看键值对应的数据内容，83bba为数据键值的简写，只需要输入83baae61804e65cc73a7201a7252750c76066a30的部分就可以，不必把40个字符全部键入，可以看到输出了存入到数据库中的内容。</p>
+<p>接下来，我们修改test.txt来看看效果</p>
+<pre><code>$ echo &quot;version 2&quot; &gt; test.txt
+$ git hash-object -w test.txt
+1f7a7a472abf3dd9643fd615f6da379c4acb3e3a
+$ find .git/objects -type f
+.git/objects/1f/7a7a472abf3dd9643fd615f6da379c4acb3e3a
+.git/objects/83/baae61804e65cc73a7201a7252750c76066a30
+</code></pre>
+<p>我们发现，.git/objects下多出了一个文件，我们执行git cat-file搞清楚这两条数据的内容分别是什么。执行</p>
+<pre><code>$ git cat-file -p 83baa
+version 1
+$git cat-file -p 1f7a7a
+version 2
+</code></pre>
+<p>我们发现，test.txt的变更过程被完整的记录下来了。</p>
+<p>另外，我们可以通过下面操作进行数据类型的查看</p>
+<pre><code>$ git cat-file -t  83baa
+ blob
+$ git cat-file -t  1f7a7a
+ blob
+</code></pre>
+<p>其中，-t选项用于查看键值对应数据的类型，可以看到输出了blob，也就是blob类型的对象，blob类型的对象解决的是文件内容存储的问题，它只关心文件内容，与文件的名字无关。而文件名的存储则需要通过树对象来解决。</p>
+<p>下面用一个图表示这个blob对象。</p>
+<figure data-type="image" tabindex="1"><img src="https://pianpian315.github.io/post-images/1576310393895.png" alt=""></figure>
+<h3 id="树对象tree">树对象（tree）</h3>
+<p>树对象（tree object），它能解决文件名保存的问题，也允许我们将多个文件组织到一起。 一个树（tree）对象包含一条或多条记录，每条记录含有一个指向blob对象或tree对象的SHA-1指针，以及相应的模式、类型、文件名。</p>
+<ul>
+<li>向git数据库进行tree对象写入操作</li>
+</ul>
+<p>通常，Git根据某一时刻暂存区所表示的状态创建并记录一个对应的树对象。</p>
+<p>下面我们将test.txt的放入暂存区</p>
+<pre><code>$ find .git/index
+find: '.git/index': No such file or directory
+$ git update-index --add test.txt
+$ find .git/index
+.git/index
+</code></pre>
+<p>我们注意.git/index文件的变化，在添加test.txt到暂存区前，index文件并不存在，这说明暂存区还没有创建。添加test.txt到暂存区的同时，index文件被创建。</p>
+<pre><code>$ find .git/objects/ -type f
+.git/objects/1f/7a7a472abf3dd9643fd615f6da379c4acb3e3a
+.git/objects/83/baae61804e65cc73a7201a7252750c76066a30
+$ git ls-files --stage
+100644 83baae61804e65cc73a7201a7252750c76066a30 0    test.txt
+</code></pre>
+<p>可以看到，我们发现在执行git update-index 之后，git数据库并没有改变，依然是只有两条数据。通过git ls-files --stage查看暂存区内容，可以看到test.txt确实已经被暂存在缓冲区。</p>
+<pre><code>$ git write-tree
+2f39845a4a2c3ad86adebb00b1ddabd959c131c4
+$ find .git/objects/ -type f
+.git/objects/1f/7a7a472abf3dd9643fd615f6da379c4acb3e3a
+.git/objects/83/baae61804e65cc73a7201a7252750c76066a30
+.git/objects/2f/39845a4a2c3ad86adebb00b1ddabd959c131c4
+</code></pre>
+<p>在执行git write-tree之后，git数据库中多出了一条新的记录，键值为2f39845a4a2c3ad86adebb00b1ddabd959c131c4。</p>
+<ul>
+<li>对tree对象进行查询操作</li>
+</ul>
+<pre><code>$ git cat-file -t 2f3984
+tree
+$ git cat-file -p 2f3984
+100644 blob 1f7a7a472abf3dd9643fd615f6da379c4acb3e3a	test.txt
+</code></pre>
+<p>由执行结果可见，git数据库中新增加的记录是一个tree对象，该tree对象指向一个blob对象。</p>
+<p>更进一步，我们来看看是否能将一个子文件夹保存到tree对象</p>
+<pre><code>$ mkdir new_dir
+$ git update-index --add new_dir
+error: new_dir: is a directory - add files inside instead
+fatal: Unable to process path new_dir    
+</code></pre>
+<p>我们发现，无法将一个新建的空文件夹添加到暂存区。错误提示告诉我们，应该将文件将文件夹中的文件加入到暂存区（add files inside instead）。</p>
+<p>接下来，我们在新建的文件夹下写入一个文件，再尝试将这一文件加入暂存区。</p>
+<pre><code>$ echo &quot;new file&quot; &gt; new_dir/new
+$ git update-index --add new_dir/new
+$ git ls-files --stage 
+100644 138c554a661371c9c40ae62dfb5d51b48b9b3f6b 0	new_dir/new
+100644 1f7a7a472abf3dd9643fd615f6da379c4acb3e3a 0	test.txt
+$ git write-tree
+514c3df17ea4fdf5de456905128e8a5a0a48b4b5
+$ git cat-file -p 514c3
+040000 tree 8d6bc0bdbba1d28caf4ee66a125169500080e206	new_dir
+100644 blob 1f7a7a472abf3dd9643fd615f6da379c4acb3e3a	test.txt
+$ git cat-file -p 8d6bc0
+100644 blob 138c554a661371c9c40ae62dfb5d51b48b9b3f6b	new
+</code></pre>
+<p>从执行结果可见，文件夹new_dir对应一个tree对象，它这个tree对象里面包含了一个blob对象。</p>
+<p>下面用一个图进行表示。</p>
+<figure data-type="image" tabindex="2"><img src="https://pianpian315.github.io/post-images/1576311016532.png" alt=""></figure>
+<h3 id="提交对象commit">提交对象（commit）</h3>
+<p>commit对象能够帮你记录什么时间，由什么人，因为什么原因提交了一个新的版本，这个新的版本的父版本又是谁。</p>
+<p>git提供了底层命令commit-tree来创建提交对象（commit object）</p>
+<pre><code>$ git write-tree
+514c3df17ea4fdf5de456905128e8a5a0a48b4b5
+
+$ git commit-tree 514c3d -m &quot;first commit&quot;
+9d8bc906e19c734a3aa6de9c7271f3c8bca84d9a
+
+$ git cat-file -p 9d8bc90
+tree 514c3df17ea4fdf5de456905128e8a5a0a48b4b5
+author hupp &lt;hupp@xx.com&gt; 1575893692 +0800
+committer hupp &lt;hupp@xx.com&gt; 1575893692 +0800
+</code></pre>
+<p>在git commit-tree命令中，-m选项用于指定本次提交的注释, -p指定该提交对象的父提交对象。</p>
+<p>下面可以用一个图进行表示。</p>
+<figure data-type="image" tabindex="3"><img src="https://pianpian315.github.io/post-images/1576310784143.png" alt=""></figure>
+<h3 id="参考文章">参考文章</h3>
+<p>https://zhuanlan.zhihu.com/p/45510461<br>
+https://yanhaijing.com/git/2017/02/08/deep-git-3/<br>
+https://git-scm.com/book/zh/v2/Git-%E5%86%85%E9%83%A8%E5%8E%9F%E7%90%86-Git-%E5%AF%B9%E8%B1%A1<br>
+https://www.cnblogs.com/liyropt/archive/2012/12/11/2812194.html<br>
+https://jingsam.github.io/2018/10/12/git-reference.html</p>
+</div>
+                                    <div class="mdui-divider mdui-m-b-2"></div>
+                                    <div class="mdui-row-xs-2 post-fenye">
+                                       
+                                        <div class="mdui-col"> </div>
+                                        
+
+                                        
+                                        <div class="mdui-col"><div class="mdui-text-right "><a href="https://pianpian315.github.io/post/java-zhong-thread-xian-cheng-de-zhong-duan">Java中Thread线程的中断</a></div> </div>
+                                       
+                                      </div>
+                                   
+                                    <div class="mdui-divider mdui-m-t-2 mdui-m-b-2"></div>
+                                    
+                                     <script src="https://pianpian315.github.io/media/scripts/Valine.min.js"></script>
+ <div class="comment"></div>
+
+<script>
+      new Valine({
+            el: '.comment',
+
+
+
+            path: window.location.pathname,
+            pageSize: 30,
+            avatar:'mm', 
+       })
+    </script> 
+<script>
+    if(window.location.hash){
+        var checkExist = setInterval(function() {
+           if ($(window.location.hash).length) {
+              $('html, body').animate({scrollTop: $(window.location.hash).offset().top-90}, 1000);
+              clearInterval(checkExist);
+           }
+        }, 100);
+    }
+</script>
+                                </article>
+
+                                    
+                        </div>
+                      </div>
+    
+                
+
+              </div>
+                    <footer class="footer mdui-m-t-5 mdui-text-center">
+               <nav class="social-links">
+                      <ul>
+                      
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      
+                           
+                      </ul>
+                    </nav>
+                  <div class="copyright">
+                      <p>贵在坚持，欢迎监督 <br/> Theme <a href="https://github.com/alterfang/gridea-theme-song/">宋</a> by <a href="https://shanbu.fun/">山卜方</a> </p>
+                  </div>
+                  
+              </footer>
+    </body>
+</html>
